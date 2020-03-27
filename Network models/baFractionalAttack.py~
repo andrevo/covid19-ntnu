@@ -1,3 +1,0 @@
-import networkx as nx
-
-network = nx.barabasi_albert_graph(1000, 4)
