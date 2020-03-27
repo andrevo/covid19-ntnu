@@ -1,0 +1,129 @@
+import matplotlib.pyplot as plt
+import numpy as np
+import networkx as nx
+import random
+import operator
+
+def infect(network, state, node, p):
+    for nb in network[node]:
+        if state[nb] == 'S':
+            if random.random() < p:
+                state[nb] = 'I'
+
+def recover(state, node, p):
+    if random.random() < p:
+        state[node] = 'R'
+            
+def SIR(network, pi, pr, i0):
+    state = []
+    for node in range(max(network)+1):
+        state.append('S')
+    for i in random.sample(network.nodes(), i0):
+        state[i] = 'I'
+    cont = 1
+    days = 0
+    while (cont):
+        cont = 0
+        days += 1
+        for node in network:
+            if state[node] == 'I':
+
+                cont = 1
+                infect(network, state, node, pi)
+                recover(state, node, pr)
+    cases = 0
+    for node in network:
+        if state[node] == 'R':
+            cases += 1
+    return (cases, days)
+
+n = 1000
+k = 4
+
+network = nx.barabasi_albert_graph(n, k)
+
+degs = network.degree()
+
+sorted_degs = sorted(degs.items(), key=operator.itemgetter(1))
+sorted_degs.reverse()
+
+i0 = 10
+pi = 0.05
+pr = 0.2
+
+delNet = network.copy()
+compSize = []
+sick = []
+print "Standard attack"
+
+for i in sorted_degs[:-(i0+1)]:
+    delNet.remove_node(i[0])
+    comps = nx.connected_components(delNet)
+    sRuns = []
+    for i in range(50):
+        sRuns.append(SIR(delNet, pi, pr, i0)[0])
+    sick.append(np.mean(sRuns))
+    #sick.append(SIR(delNet, pi, pr, i0)[0])
+    sizes = [len(comp) for comp in comps]
+    compSize.append(max(sizes))
+
+plt.subplot(211)
+plt.plot(compSize, label='Full attack')
+plt.subplot(212)
+plt.plot(sick, label='Full attack')
+
+saComp = compSize
+saSick = sick
+
+
+pSafe = 0.7
+
+print "Fractional attack"
+for pSafe in [0.25, 0.5, 0.75]:
+    delNet = network.copy()
+    compSize = []
+    sick = []
+    for i in sorted_degs[:-(i0+1)]:
+        if random.random() < pSafe:
+            delNet.remove_node(i[0])
+            comps = nx.connected_components(delNet)
+            sRuns = []
+            for i in range(50):
+                sRuns.append(SIR(delNet, pi, pr, i0)[0])
+            sick.append(np.mean(sRuns))
+            #sick.append(SIR(delNet, pi, pr, i0)[0])
+            sizes = [len(comp) for comp in comps]
+            compSize.append(max(sizes))
+
+    plt.subplot(211)
+    plt.plot(compSize, label = 'Fractional, p='+pSafe)
+    plt.subplot(212)
+    plt.plot(sick, label = 'Fractional, p='+pSafe)
+
+    
+seq = range(n)
+random.shuffle(seq)
+delNet = network.copy()
+compSize = []
+sick = []
+
+print "Random failure"
+for i in seq[:-(i0+1)]:
+
+        delNet.remove_node(i)
+        comps = nx.connected_components(delNet)
+        sRuns = []
+        for i in range(50):
+            sRuns.append(SIR(delNet, pi, pr, i0)[0])
+        sick.append(np.mean(sRuns))
+        #sick.append(SIR(delNet, pi, pr, i0)[0])
+        sizes = [len(comp) for comp in comps]
+        compSize.append(max(sizes))
+
+plt.subplot(211)
+plt.plot(compSize, label='Random')
+plt.subplot(212)
+plt.plot(sick, label='Random')
+
+plt.savefig("FracAttack.png")
+plt.show()
