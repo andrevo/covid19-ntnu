@@ -15,7 +15,7 @@ B = [0.03 0.01 0.005;
      0.01 0.03 0.01;
      0.005 0.01 0.03];
 beta = 0.23; % B(1,1) is fully controlled. This is the uncontrolled value of B(1,1)
-K = [0.8; 0.8; 0.14]; % Fraction of infected in each respective age group that needs hospitalization
+K = [0.08; 0.08; 0.14]; % Fraction of infected in each respective age group that needs hospitalization
 pop_size = 100000;
 ICU_max  = 10;
 timeUnit = 'days';
@@ -43,7 +43,7 @@ only_decrease = 0; % setting this to one limits change in u to decrease only
 I_0 = 10; % num persons
 p_I_0 = I_0/pop_size;
 p_R_0 = 0;
-p_E_0 = 0.001;
+p_E_0 = 0.01;
 x_0 = [p_R_0*ones(A,1); p_I_0*ones(A,1); p_E_0*ones(A,1)]; % equally many children and adults
 u_0 = 1.0;
 
