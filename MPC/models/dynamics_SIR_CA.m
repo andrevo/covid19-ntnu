@@ -8,9 +8,7 @@ x_S = 1-x_1-x_2; % p^S
 A = diag(alpha);
 x_1_dot = A*x_2;
 
-temp = B*x_2;
-
-x_2_dot = -A*x_2 + diag(x_S)*[(1-u(1))*temp(1); (1-u(2))*temp(2)];
+x_2_dot = -A*x_2 + diag(x_S)*[(1-u(1))*B(1,1)*x_2(1) + B(1,2)*x_2(2); B(2,1)*x_2(1) + (1-u(2))*B(2,2)*x_2(2)];
 
 x_dot = [x_1_dot; x_2_dot];
 end
