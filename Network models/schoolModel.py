@@ -36,18 +36,23 @@ def incubate(node, state, p):
     if r < p:
         state[node] = 'I'
 
-def recover(node, state, p):
+def recover(node, state, pr, pd):
     r = random.random()
-    if r < p:
+    if r < pr:
         state[node] = 'R'
+    if r > 1-pd:
+        state[node] = 'D'
 
-hhWeights = [1, 1, 1, 1, 2, 2, 3, 3, 4, 4, 5, 6]
+hhWeights = [1, 1, 1, 1, 1, 2, 2, 2, 3, 3, 4, 4, 5]
 
 cliques = []
 
-nNodes = pow(10, 5)
+nNodes = 2*pow(10, 5)
 
 seq = list(range(nNodes))
+
+pD = {'BS': 0.0001, 'US': 0.0001, 'VS': 0.0001, 'A': 0.01, 'E':0.1 } 
+
 
 state = ['S']*nNodes
 ageGroup = [0]*nNodes
@@ -85,27 +90,46 @@ while(i < nNodes):
     for j in range(i, t):
         clique.append(seq[j])
 
+    ar = random.random()
     for j in range(i, min(t, i+2)):
-        ageGroup[seq[j]] = 'A'
-        adults.append(seq[j])
 
+        adults.append(seq[j])
+        if fs > 2:
+            ageGroup[seq[j]] = 'A'
+        else:
+            if ar < 1:
+                ageGroup[seq[j]] = 'E'
+        
+
+        
+    
     fBs = random.randint(0, nBs-1)
     fUs = random.randint(0, nUs-1) #Antar barne- og ungdomsskole er uavhengig
     #VGS er tilfeldig
 
     if fs > 2:
         for j in range(i+2, t):
-            year = random.randint(1, 13)
-            if year < 8:
-                ageGroup[seq[j]] = 'B'
+            year = random.randint(0, 23)
+            #if year < 6:
+            #    ageGroup[seq[j]] = 'BH'
+            if  (year < 13):
+                ageGroup[seq[j]] = 'BS'
                 bsCliques[fBs].append(j)
-            elif year > 10:
-                ageGroup[seq[j]] = 'V'
-                vgsCliques[random.randint(0, nVs-1)].append(j)
+            elif year < 16:
+                ageGroup[seq[j]] = 'US'
+                usCliques[fUs].append(j)
+
+            elif year < 19:
+                ageGroup[seq[j]] = 'VS'
+                vsCliques[random.randint(0, nVs-1)].append(j)
+
             else:
-                ageGroup[seq[j]] = 'U'
-                usCliques[fUs].append(j)                
-            children.append(seq[j])
+                ageGroup[seq[j]] = 'A'
+
+            if year < 19:
+                children.append(seq[j])
+            else:
+                adults.append(seq[j])
 
             
     hhCliques.append(clique)
@@ -114,15 +138,7 @@ while(i < nNodes):
 
 print "Households and schools created"
     
-#School assignment
-#random.shuffle(children)
 
-#for nodes in children:
-#    fs = random.randint(10, 500)
-    
-
-
-#print "Schools created"
 
 
 #Work assignment
@@ -153,31 +169,39 @@ rCliques = []
 
 
 
-pinf = 0.0005 #0.003 approx epidemic threshold for unrestricted
+sPinf = 0.001 #0.003 approx epidemic threshold for unrestricted
+wPinf = 0.0005
 hhPinf = 0.1
-rPinf = 2*pow(10, -6)
-rPinfQ = 1*pow(10, -9)
+rPinf = 1*pow(10, -6)
+rPinfQ = 1*pow(10, -7)
 
 pinc = 1
-prec = 0.1
+prec = 0.2
 
-for i in range(10):
+i0 = 200
+
+for i in range(i0):
     state[seq[i]] = 'I'
 
 ht = []
 lt = []
 it = []
 rt = []
+hhinfs = 0
+sinfs = 0
+winfs = 0
+rinfs = 0
 
 relBs = 0000
 relUs = 0000
 relVs = 0000
-relW = 10000
-relR = 10000
- 
+relW = 1000
+relR = 1000
+
 cont = 1
 i = 0
 repeats = 0
+
 while cont:
     
     cont = 0
@@ -186,28 +210,29 @@ while cont:
         print i
         
     for clique in hhCliques:
-        cont = day(clique, state, hhPinf)
-
+        hhinfs += day(clique, state, hhPinf)
+        
+        
     if i > relBs:
         for clique in bsCliques:
-            day(clique, state, pinf)
+            sinfs += day(clique, state, pinf)
     if i > relUs:
         for clique in usCliques:
-            day(clique, state, pinf)
+            sinfs += day(clique, state, pinf)
     if i > relVs:
         for clique in vsCliques:
-            day(clique, state, pinf)
+            sinfs += day(clique, state, pinf)
 
     if i > relW:
         for clique in wCliques:
         #if len(clique) < 400:
     #    if random.random() < 0.8:
-            day(clique, state, pinf)
-
-    # if i > relR:
-    #     day(seq, state, rPinf)
-    # else:
-    #     day(seq, state, rPinfQ)
+            winfs += day(clique, state, pinf)
+        
+    if i > relR:
+        rinfs += day(seq, state, rPinf)
+    else:
+        rinfs += day(seq, state, rPinfQ)
     #for n in range(nNodes):
     #    if state[n] == 'I':
             
@@ -218,7 +243,7 @@ while cont:
         if state[node] == 'E':
             incubate(node, state, pinc)
         if state[node] == 'I':
-            recover(node, state, prec)
+            recover(node, state, prec, prec*pD)
 
     healthy = 0
     latent = 0
@@ -240,7 +265,7 @@ while cont:
     it.append(infected)
     rt.append(recovered)
     if (cont == 0):
-        print i, "Reinfect", recovered
+        print i, "Reinfect", recovered, "Cases", hhinfs, "Household", sinfs, "School", winfs, "Work", rinfs, "Random"
         repeats += 1
         relBs = 0
         relUs = 0
