@@ -1,4 +1,4 @@
-function [u_opt,x_opt,t] = optimal_control(dyn_fun,stage_cost,term_cost,horizon,dt_u,RK4_steps,x_0,u_0,only_decrease,nx,nu)
+function [u_opt,x_opt,t] = optimal_control(dyn_fun,stage_cost,term_cost,horizon,dt_u,RK4_steps,x_0,u_0,nx,nu,constraints,only_decrease,integer)
 import casadi.*
 
 T  = horizon;  % [days] time horizon
@@ -7,14 +7,14 @@ N = T/dt; % number of control intervals
 
 x = MX.sym('x',nx);
 u = MX.sym('u',nu);
-%%
+
 % Input Constraints
-u_max = ones(nu,1);
-u_min = zeros(nu,1);
+u_max = constraints.u_max;
+u_min = constraints.u_min;
 
 % State Constraints
-x_max = ones(nx,1);
-x_min = zeros(nx,1);
+x_max = constraints.x_max;
+x_min = constraints.x_min;
 
 % Objective function
 xdot = dyn_fun(x,u);
@@ -44,6 +44,11 @@ for j=1:M
 end
 F = Function('F', {X0, U}, {X, Q}, {'x0','u'}, {'xf', 'qf'});
 
+% Initial guess for u
+u_start = [DM(0.)] * N;
+
+% TODO: finish this, such that intial guess is feasible.
+
 %% Formulate NLP
 
 % Start with an empty NLP
@@ -53,6 +58,7 @@ w={};     % Decision variables
 w0 = [];  % Initial guess
 lbw = []; % Lower and upper bounds on decision variables
 ubw = [];
+discrete = [];
 J = 0;    % Cost function
 g={};     % Nonlinear function of decision variables
 lbg = []; % Lower and upper bounds for g
@@ -64,6 +70,7 @@ w = {w{:}, Xk};
 lbw = [lbw; x_0];
 ubw = [ubw; x_0];
 w0 = [w0; x_0];
+discrete = [discrete; zeros(nx,1)];
 
 U_prev = u_0;
 
@@ -75,6 +82,7 @@ for k=0:N-1
     lbw = [lbw; u_min];
     ubw = [ubw; u_max];
     w0 = [w0;  u_0];
+    discrete = [discrete;ones(nu,1)];
 
     % Integrate till the end of the interval
     Fk = F('x0', Xk, 'u', Uk);
@@ -87,6 +95,7 @@ for k=0:N-1
     lbw = [lbw; x_min];
     ubw = [ubw; x_max];
     w0 = [w0; x_0];
+    discrete = [discrete;zeros(nx,1)];
 
     % Add equality constraint
     g = [g, {Xk_end-Xk}];
@@ -95,8 +104,8 @@ for k=0:N-1
     
     if(only_decrease)
         g = [g, {Uk-U_prev}];
-        lbg = [lbg; -1];
-        ubg = [ubg; 0];
+        lbg = [lbg; 0];
+        ubg = [ubg; Inf];
 
         U_prev = Uk;
     end
@@ -108,12 +117,17 @@ J=J + term_cost(Xk);
 % Create an NLP solver
 nlp = struct('f', J, 'x', vertcat(w{:}), 'g', vertcat(g{:}));
 
+opt = struct;
 %opt.ipopt.print_level = 0;
 %opt.ipopt.sb = 'yes';
 %opt.print_time = 0;
-opt.ipopt.warm_start_init_point = 'yes';
+%opt.ipopt.warm_start_init_point = 'yes';
+solver = nlpsol('solver', 'ipopt', nlp, opt);
 
-solver = nlpsol('solver', 'ipopt', nlp,opt);
+if(integer)
+   opt.discrete = discrete;
+   solver = nlpsol('solver', 'bonmin', nlp, opt);
+end
 
 % Solve the NLP
 sol = solver('x0', w0, 'lbx', lbw, 'ubx', ubw,...
