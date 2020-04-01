@@ -35,6 +35,9 @@ def cliqueDay(clique, state, p):
 
     return newInfs
 
+
+
+
 #Turns latent into infectious
 def incubate(node, state, p):
     r = random.random()
