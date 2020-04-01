@@ -118,13 +118,14 @@ J=J + term_cost(Xk);
 nlp = struct('f', J, 'x', vertcat(w{:}), 'g', vertcat(g{:}));
 
 opt = struct;
-%opt.ipopt.print_level = 0;
+opt.ipopt.print_level = 0;
 %opt.ipopt.sb = 'yes';
-%opt.print_time = 0;
+opt.print_time = 0;
 %opt.ipopt.warm_start_init_point = 'yes';
 solver = nlpsol('solver', 'ipopt', nlp, opt);
 
 if(integer)
+   opt = struct;
    opt.discrete = discrete;
    solver = nlpsol('solver', 'bonmin', nlp, opt);
 end

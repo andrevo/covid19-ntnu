@@ -15,7 +15,7 @@ K = 0.1; % Fraction of infected that needs hospitalization
 pop_size = 100000;
 ICU_max  = 10;
 timeUnit = 'days';
-prefix = 'SIR';
+prefix = 'MPC_SIR';
 % Model info
 nx = 2;
 nu = 1;
@@ -31,7 +31,7 @@ y_val = [0.01 0.09 0.12 0.17 0.23];
 p = polyfit(x_val,y_val,length(y_val)-1);
 beta_fun = @(u) polyval(p',u);
 
-integer = 1; % set to one to use mixed integer optimization
+integer = 0; % set to one to use mixed integer optimization
 % if integer = 0, u is in the interval [1,5] (approximation)
 only_decrease = 0; % setting this to one limits change in u to decrease only
 
@@ -68,21 +68,51 @@ RK4_steps = 8;
 
 % In addition to x and u, plot the following:
 % (function of x and u)
-plot_list = {{@(x,u) 1-x(1:A,:)-x(A+1:2*A,:)}, {@(x,u) pop_size*K*x(A+1:2*A,:), @(x,u) C_d*ones(1,1+horizon/dt_u)}};
+plot_list = {{@(x,u) 1-x(1:A,:)-x(A+1:2*A,:)}, {@(x,u) pop_size*K*x(A+1:2*A,:), @(x,u) C_d*ones(1,max(size(x)))}};
 plot_list_names = {'p^S','ICU'};
 plot_list_use_legends = [1, 0];
 
-%% Solve optimal control problem
-[u_opt,x_opt,t] = optimal_control(dyn_fun,stage_cost,term_cost,horizon,dt_u,RK4_steps,x_0,u_0,nx,nu,constraints,only_decrease,integer);
 
+%% Run MPC
+x0 = x_0;
+u0 = u_0;
+t = [];
+x = [];
+u = [];
+dt = dt_u; % for now same as control
+simTime = horizon;
+numSteps = simTime/dt;
+tic
+fprintf('Starting..\n');
+for i=1:numSteps
+    %% Solve optimal control problem for u_opt
+    [u_opt,x_opt,t_opt] = optimal_control(dyn_fun,stage_cost,term_cost,horizon,dt_u,RK4_steps,x0,u0,nx,nu,constraints,only_decrease,integer);
+    %figure
+    %plot(t_opt,beta_fun(u_opt))
+    %pause
+    
+    % Implement first input only
+    x_dot = @(t,x) dyn_fun(x,u_opt(1));
+    [t_part,x_part] = ode45(x_dot,[(i-1)*dt,i*dt],x0);
+    t = [t; t_part];
+    x = [x; x_part];
+    u = [u; u_opt(1)*ones(length(t_part),1)];
+    x0 = x(end,:)';
+    u0 = u_opt(1);
+    fprintf('Iteration number %d finished!\n',i);
+end
+toc
+fprintf('Complete!\n');
 %% Plot Results
+
+x = x';
 
 % States
 L = nx/A;
 figure
 for i = 1:L
     subplot(L,1,i)
-    plot(t,x_opt((i-1)*A+1:i*A,:))
+    plot(t,x((i-1)*A+1:i*A,:))
     if(i==1)
         title('x_{opt}')
     end
@@ -95,7 +125,7 @@ xlabel(['t [' timeUnit ']'])
 filename = ['figures/',prefix,'_xopt_',time];
 print(gcf,filename,'-dpng')
 
-beta = beta_fun(u_opt); 
+beta = beta_fun(u); 
 
 figure
 stairs(t,beta')
@@ -110,7 +140,7 @@ for i=1:length(plot_list)
    figure; hold on
    for j=1:length(temp)
       handle = temp{j};
-      plot(t,handle(x_opt,u_opt)) 
+      plot(t,handle(x,u)) 
    end
    hold off;
    xlabel(['t [' timeUnit ']'])
@@ -121,19 +151,4 @@ for i=1:length(plot_list)
    filename = ['figures/',prefix,'_addplot',int2str(i),'_',time];
    print(gcf,filename,'-dpng')
 end
-
-%% Now sim system
-x0 = x_0;
-t = [];
-x = [];
-for i=1:length(u_opt)
-    x_dot = @(t,x) dyn_fun(x,u_opt(i));
-    [t_part,x_part] = ode45(x_dot,[(i-1)*dt_u,i*dt_u],x0);
-    t = [t; t_part];
-    x = [x; x_part];
-    x0 = x(end,:);
-end
-
-figure
-plot(t,x)
 
