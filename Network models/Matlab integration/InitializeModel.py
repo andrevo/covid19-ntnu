@@ -1,10 +1,7 @@
 #S = 0, E=1, I=2, R=3
 
-import networkx as nx
 import random
 import numpy as np
-import matplotlib.pyplot as plt
-import argparse
 
 stateList = ['S', 'E', 'I', 'R', 'H', 'D']
 
