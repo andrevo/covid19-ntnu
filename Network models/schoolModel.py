@@ -4,7 +4,9 @@ import networkx as nx
 import random
 import numpy as np
 import matplotlib.pyplot as plt
+import argparse
 
+states = ['S', 'E', 'I', 'R', 'H', 'D']
 
 def genRandomClique(seq, ub):
     rs = pow(random.random(), 0.5)
@@ -12,6 +14,8 @@ def genRandomClique(seq, ub):
     clique = random.sample(seq, cSize)
     return clique
 
+
+#Runs infections over a day 
 def day(clique, state, p):
 
     susceptible = 0
@@ -30,34 +34,66 @@ def day(clique, state, p):
         state[nb] = 'E'
 
     return newInfs
-    
+
+#Turns latent into infectious
 def incubate(node, state, p):
     r = random.random()
     if r < p:
         state[node] = 'I'
 
-def recover(node, state, pr, pd):
+#Infectious to recovered, hospital, or back into susceptible
+def recover(node, state, pr, ph, pni):
     r = random.random()
     if r < pr:
         state[node] = 'R'
-    if r > 1-pd:
+    elif r < pr+ph:
+        state[node] = 'H'
+    elif r < pr+pni:
+        state[node] = 'S'
+
+#Hospitalized to dead or recovered
+def hospital(node, state, pr, pc):
+    r = random.random()
+    if r < pr:
+        state[node] = 'R'
+    elif r < pr+pc:
         state[node] = 'D'
+
+
+#Distribution of household sizes
 
 hhWeights = [1, 1, 1, 1, 1, 2, 2, 2, 3, 3, 4, 4, 5]
 
-cliques = []
 
-nNodes = 2*pow(10, 5)
 
-seq = list(range(nNodes))
+nNodes = 2*pow(10, 5) #Trondheim
+#nNodes = 7*pow(10, 5) #Oslo
 
-pD = {'BS': 0.0001, 'US': 0.0001, 'VS': 0.0001, 'A': 0.01, 'E':0.1 } 
+hCap = 100 #Max hospital capacity
 
+seq = list(range(nNodes)) #Initializes nodes
+
+#pD = {'B': 0.0001, 'A1': 0.0005, 'A2':0.005, 'E1':0.05, 'E2': 0.2 }
+
+#Probability of hospitalization
+pH = {'B': 0.0001, 'A1': 0.02, 'A2':0.08, 'E1':0.15, 'E2': 0.184 } 
+
+#Probability of death, once hospitalized (@capacity)
+pD = {'B': 0.1, 'A1': 0.05, 'A2':0.15, 'E1':0.3, 'E2': 0.40 } 
+
+#Probability of death, once hospitalized (@overcapacity), TBD
+
+layers = ['BH', 'BS', 'US', 'VS', 'W', 'HH', 'R']
+
+cliques = {}
+for layer in layers:
+    clique[layer] = []
 
 state = ['S']*nNodes
 ageGroup = [0]*nNodes
-adults = []
-children = []
+adults = [] #IDs of adults
+children = [] #IDs of children
+elderly = [] #IDs of elderly
 
 #Household assignment
 
@@ -67,22 +103,38 @@ cn = 0
 
 random.shuffle(seq)
 
-nBs = 30
-nUs = 20
-nVs = 15
+#Trondheim
+n = {}
+n['BH'] = 265
+n['BS'] = 30
+n['US'] = 20
+n['VS'] = 15
+
+
+#Oslo
+
+#nBh = 733
+#nBs= 115
+#NUs = 62
+#nVh = 29
+
 
 hhCliques = []
-bsCliques = []
-for i in range(nBs):
-    bsCliques.append([])
-usCliques = []
-for i in range(nUs):
-    usCliques.append([])
-vsCliques = []
-for i in range(nVs):
-    vsCliques.append([])
+
+bhCliques = []
+
+for layer in ['BH', 'BS', 'US', 'VS']:
+    for i in range(n[layer]):
+        cliques[layer].append([])
 
 
+ageGroups = ['B', 'A1', 'A2', 'E1', 'E2']
+ageLists = {}
+for group in ageGroups:
+    ageLists[group] = []
+
+
+i = 0
 while(i < nNodes):
     fs = hhWeights[random.randint(0,len(hhWeights)-1)]
     t = min(i+fs, nNodes)
@@ -93,16 +145,29 @@ while(i < nNodes):
     ar = random.random()
     for j in range(i, min(t, i+2)):
 
-        adults.append(seq[j])
+
         if fs > 2:
-            ageGroup[seq[j]] = 'A'
+            if ar < 0.2:
+                ageGroup[seq[j]] = 'A2'
+            else:
+                ageGroup[seq[j]] = 'A1'
+            adults.append(seq[j])
         else:
-            if ar < 1:
-                ageGroup[seq[j]] = 'E'
-        
+            if ar < 0.3:
+                ageGroup[seq[j]] = 'A1'
+                adults.append(seq[j])
+            elif ar < 0.6:
+                ageGroup[seq[j]] = 'A2'
+                adults.append(seq[j])
+            elif ar < 0.9:
+                ageGroup[seq[j]] = 'E1'
+                elderly.append(seq[j])
+            else:
+                ageGroup[seq[j]] = 'E2'
+                elderly.append(seq[j])
 
         
-    
+    fBh = random.randint(0, nBh-1)
     fBs = random.randint(0, nBs-1)
     fUs = random.randint(0, nUs-1) #Antar barne- og ungdomsskole er uavhengig
     #VGS er tilfeldig
@@ -110,35 +175,41 @@ while(i < nNodes):
     if fs > 2:
         for j in range(i+2, t):
             year = random.randint(0, 23)
-            #if year < 6:
-            #    ageGroup[seq[j]] = 'BH'
+            if year < 6:
+                ageGroup[seq[j]] = 'B'
+                
+                cliques['BH'][fBh)].append(seq[j])
             if  (year < 13):
-                ageGroup[seq[j]] = 'BS'
-                bsCliques[fBs].append(j)
+                ageGroup[seq[j]] = 'B'
+                cliques['BS'][fBs].append(seq[j])
             elif year < 16:
-                ageGroup[seq[j]] = 'US'
-                usCliques[fUs].append(j)
+                ageGroup[seq[j]] = 'B'
+                usCliques['US'][fUs].append(seq[j])
 
             elif year < 19:
-                ageGroup[seq[j]] = 'VS'
-                vsCliques[random.randint(0, nVs-1)].append(j)
+                ageGroup[seq[j]] = 'B'
+                vsCliques[random.randint(0, nVs-1)].append(seq[j])
 
             else:
-                ageGroup[seq[j]] = 'A'
+                ageGroup[seq[j]] = 'A1'
 
             if year < 19:
                 children.append(seq[j])
+
             else:
                 adults.append(seq[j])
 
             
-    hhCliques.append(clique)
+    cliques['HH'].append(clique)
     i = t
 
 
-print "Households and schools created"
-    
 
+print "Households and schools created"
+
+#Count number of people by age group
+for node in seq:
+    ageLists[ageGroup[node]].append(node)
 
 
 #Work assignment
@@ -154,8 +225,8 @@ while(i < nAdults):
     t = min(i+fs, nAdults)
     clique = []
     for j in range(i, t):
-        clique.append(seq[j])
-    wCliques.append(clique)
+        clique.append(adults[j])
+    cliques['W'].append(clique)
     i = t
 
 print "Workplaces created"
@@ -166,41 +237,55 @@ print "Workplaces created"
 i = 0
 random.shuffle(seq)
 rCliques = []
+cliques['R'].append(seq)
+
+pInfs = {'BH': 0.0002, 'BS': 0.0002, 'US': 0.0002, 'VS': 0.0002, 'W': 0.0002, 'R': 0.5*pow(10, -6), 'HH': 0.1}
+qpr = {'BH': 0, 'BS': 0.0, 'US': 0.0002, 'VS': 0.0002, 'W': 0.0002, 'R': 0.5*pow(10, -6), 'HH': 0.1}
 
 
-
-sPinf = 0.001 #0.003 approx epidemic threshold for unrestricted
-wPinf = 0.0005
+sPinf = 0.0002 #0.003 approx epidemic threshold for unrestricted (lolno)
+wPinf = 0.0002
 hhPinf = 0.1
-rPinf = 1*pow(10, -6)
-rPinfQ = 1*pow(10, -7)
+rPinf = 0.5*pow(10, -6)
+rPinfQ = 2.5*pow(10, -7)
 
 pinc = 1
-prec = 0.2
+prec = 0.1
+#prec = 0 #Debug
+pni = 0.00
 
-i0 = 200
+i0 = 20
 
 for i in range(i0):
     state[seq[i]] = 'I'
 
-ht = []
-lt = []
-it = []
-rt = []
+tCounts = {}
+for s in states:
+    tCounts[s] = []
+
+hospt = []
+Reff = []
+
 hhinfs = 0
 sinfs = 0
 winfs = 0
 rinfs = 0
 
-relBs = 0000
-relUs = 0000
-relVs = 0000
-relW = 1000
-relR = 1000
+dailyt = []
+dailyrec = []
+
+rel = {'BH': 000, 'BS': 000, 'US': 000, 'VS': 000, 'W': 1000, 'R': 1000}
+
 
 cont = 1
 i = 0
 repeats = 0
+
+#"Vaccination"
+for node in seq:
+    if ageGroup[node] in ['B', 'A1', 'A2']:
+        if random.random() < 0:
+            state[node] = 'R'
 
 while cont:
     
@@ -208,79 +293,115 @@ while cont:
     i+=1
     if i%10 == 0:
         print i
-        
-    for clique in hhCliques:
-        hhinfs += day(clique, state, hhPinf)
-        
-        
-    if i > relBs:
-        for clique in bsCliques:
-            sinfs += day(clique, state, pinf)
-    if i > relUs:
-        for clique in usCliques:
-            sinfs += day(clique, state, pinf)
-    if i > relVs:
-        for clique in vsCliques:
-            sinfs += day(clique, state, pinf)
 
-    if i > relW:
-        for clique in wCliques:
-        #if len(clique) < 400:
-    #    if random.random() < 0.8:
-            winfs += day(clique, state, pinf)
-        
-    if i > relR:
-        rinfs += day(seq, state, rPinf)
-    else:
-        rinfs += day(seq, state, rPinfQ)
-    #for n in range(nNodes):
-    #    if state[n] == 'I':
+    dailyInfs = 0
+    for clique in hhCliques:
+        infs = day(clique, state, hhPinf)
+        hhinfs += infs
+        dailyInfs += infs
+
+    
+    if i > rel['BH']:
+        for clique in bhCliques:
+            infs = day(clique, state, sPinf)
+            sinfs += infs
+            dailyInfs += infs
             
-    #    day(genRandomClique(seq, nNodes), state, pinf)
+    if i > rel['BS']:
+        for clique in bsCliques:
+            infs = day(clique, state, sPinf)
+            sinfs += infs
+            dailyInfs += infs
+            
+    if i > rel['US']:
+        for clique in usCliques:
+            infs = day(clique, state, sPinf)
+            sinfs += infs
+            dailyInfs += infs
+            
+    if i > rel['VS']:
+        for clique in vsCliques:
+            infs = day(clique, state, sPinf)
+            sinfs += infs
+            dailyInfs += infs
+            
+    if i < rel['W']:
+        for clique in wCliques:
+            if len(clique) < 00:
+                if random.random() < 0.5:
+                    infs = day(clique, state, wPinf)
+                    winfs += infs
+                    dailyInfs += infs
+                    
+    else:
+        for clique in wCliques:
+            infs = day(clique, state, wPinf)
+            winfs += infs
+            dailyInfs += infs
+    if i > rel['R']:
+        infs = day(seq, state, rPinf)
+        rinfs += infs
+        dailyInfs += infs
+    else:
+        infs = day(seq, state, rPinfQ)
+        rinfs += infs
+        dailyInfs += infs
+    
 
         
     for node in range(nNodes):
         if state[node] == 'E':
             incubate(node, state, pinc)
         if state[node] == 'I':
-            recover(node, state, prec, prec*pD)
+            recover(node, state, prec, prec*pH[ageGroup[node]], pni)
+        if state[node] == 'H':
+            hospital(node, state, prec, prec*pD[ageGroup[node]])
 
-    healthy = 0
-    latent = 0
-    infected = 0
-    recovered = 0
-    for j in state:
-        if j == 'S':
-            healthy+=1
-        if j == 'E':
-            latent+=1
-            cont = 1
-        if j == 'I':
-            infected+=1
-            cont = 1
-        if j == 'R':
-            recovered+=1
-    ht.append(healthy)
-    lt.append(latent)
-    it.append(infected)
-    rt.append(recovered)
+
+    counts = {}
+    for s in states:
+        counts[s] = 0
+    
+    for s in state:
+        counts[s] += 1
+
+    for s in states:
+        tCounts[s].append(counts[s])
+        
+    if (i > 2):
+        recoveries = rt[-1]-rt[-2]
+        Reff.append(float(dailyInfs)/max(float(recoveries), 1))
+        dailyrec.append(recoveries)
+    dailyt.append(dailyInfs)
+    dt.append(dead)
+    hospt.append(hospitalized)
     if (cont == 0):
         print i, "Reinfect", recovered, "Cases", hhinfs, "Household", sinfs, "School", winfs, "Work", rinfs, "Random"
         repeats += 1
-        relBs = 0
-        relUs = 0
-        relVs = 0
-        relW = 0
-        relR = 0
+        for cond in rel:
+            rel[cond] = 0
+
         
         if repeats < 2:
             cont = 1
             random.shuffle(seq)
             for j in range(10):
                 state[seq[j]] = 'I'
-            #print seq[i], state[seq[i]]
-        #for j in range(nNodes):
-        #    if state[j] == 'I':
-        #        print j
-print max(ht), max(lt), max(it), max(rt)
-print healthy, latent, infected, recovered
+
+
+    
+print max(ht), max(lt), max(it), max(rt), max(dt)
+print healthy, latent, infected, recovered, dead
+
+
+dead = {}
+for group in ageGroups:
+    dead[group] = 0
+for node in seq:
+    if state[node] == 'D':
+        dead[ageGroup[node]] += 1
+
+print "Death count"
+
+for group in ageGroups:
+    print group, dead[group], 'dead out of', len(ageLists[group])
