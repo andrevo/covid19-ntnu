@@ -15,8 +15,6 @@ hCap = 100 #Max hospital capacity
 seq = list(range(nNodes)) #Initializes nodes
 
 
-
-
 layers = ['BH', 'BS', 'US', 'VS', 'W', 'HH', 'R']
 
 cliques = {}
@@ -55,12 +53,13 @@ n['VS'] = 15
 #nVh = 29
 
 
-
+#Generating 
 for layer in ['BH', 'BS', 'US', 'VS']:
     for i in range(n[layer]):
         cliques[layer].append([])
 
 
+#Generating age groups and creating individual containers
 ageGroups = ['B', 'A1', 'A2', 'E1', 'E2']
 ageLists = {}
 for group in ageGroups:
@@ -172,51 +171,17 @@ random.shuffle(seq)
 rCliques = []
 cliques['R'].append(seq)
 
-#Layerwise infection probabilities 
-pInfs = {'BH': 0.0002, 'BS': 0.0002, 'US': 0.0002, 'VS': 0.0002, 'W': 0.0002, 'R': 0.5*pow(10, -6), 'HH': 0.1}
-
-qpr = {'BH': 0, 'BS': 0.0, 'US': 0.0002, 'VS': 0.0002, 'W': 0.0002, 'R': 0.5*pow(10, -6), 'HH': 0.1}
 
 
-sPinf = 0.0002 #0.003 approx epidemic threshold for unrestricted (lolno)
-wPinf = 0.0002
-hhPinf = 0.1
-rPinf = 0.5*pow(10, -6)
-rPinfQ = 2.5*pow(10, -7)
-
-pinc = 1
-prec = 0.1
-#prec = 0 #Debug
-pni = 0.00
 
 i0 = 20
 
+
+#Initial infection
 for i in range(i0):
     state[seq[i]][0] = 'I'
 
 
-
-tCounts = {}
-for s in stateList:
-    tCounts[s] = []
-
-hospt = []
-Reff = []
-
-    
-lInfs = {}
-for layer in layers:
-    lInfs[layer] = 0
-
-
-dailyt = []
-dailyrec = []
-
-rel = {'BH': 000, 'BS': 000, 'US': 000, 'VS': 000, 'W': 000, 'R': 000, 'HH': 0}
-
-cont = 1
-i = 0
-repeats = 0
 
 #"Vaccination"
 for node in seq:
@@ -237,10 +202,10 @@ pD = {'B': 0.1, 'A1': 0.05, 'A2':0.15, 'E1':0.3, 'E2': 0.40 }
 
 #Set base probabilities
             
-p = {}
-p['inf'] = {'BH': 0.0002, 'BS': 0.0002, 'US': 0.0002, 'VS': 0.0002, 'W': 0.0002, 'R': 0.5*pow(10, -6), 'HH': 0.1}
-p['rec'] = 0.1
-p['inc'] = 1
-p['H'] = {'B': 0.0001, 'A1': 0.02, 'A2':0.08, 'E1':0.15, 'E2': 0.184} 
-p['D'] = {'B': 0.1, 'A1': 0.05, 'A2':0.15, 'E1':0.3, 'E2': 0.40 } 
-p['NI'] = 0
+baseP = {}
+baseP['inf'] = {'BH': 0.0002, 'BS': 0.0002, 'US': 0.0002, 'VS': 0.0002, 'W': 0.0002, 'R': 0.5*pow(10, -6), 'HH': 0.1}
+baseP['rec'] = 0.1
+baseP['inc'] = 1
+baseP['H'] = {'B': 0.0001, 'A1': 0.02, 'A2':0.08, 'E1':0.15, 'E2': 0.184} 
+baseP['D'] = {'B': 0.1, 'A1': 0.05, 'A2':0.15, 'E1':0.3, 'E2': 0.40 } 
+baseP['NI'] = 0
