@@ -114,7 +114,7 @@ for i = 1:L
     subplot(L,1,i)
     plot(t,x((i-1)*A+1:i*A,:))
     if(i==1)
-        title('x_{opt}')
+        title('x')
     end
     if(A > 1)
         legend(legends)
@@ -129,7 +129,7 @@ beta = beta_fun(u);
 
 figure
 stairs(t,beta')
-title('u_{opt}')
+title('u')
 xlabel(['t [' timeUnit ']'])
 filename = ['figures/',prefix,'_uopt_',time];
 print(gcf,filename,'-dpng')

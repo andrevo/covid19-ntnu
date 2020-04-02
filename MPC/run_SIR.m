@@ -56,7 +56,6 @@ term_cost = @(x) q_T*(pop_size*K*x(2) - C_d)^2;
 I_0 = 1000; % num persons
 p_I_0 = I_0/pop_size;
 p_R_0 = 0;
-p_E_0 = 0.001;
 x_0 = [p_R_0*ones(A,1); p_I_0*ones(A,1)];
 u_0 = 1.0;
 
