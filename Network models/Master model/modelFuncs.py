@@ -3,6 +3,7 @@ import numpy as np
 import copy
 
 
+
 stateList = ['S', 'E', 'I', 'R', 'H', 'D']
 
 def genRandomClique(seq, ub):
