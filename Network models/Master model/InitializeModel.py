@@ -1,73 +1,11 @@
-#S = 0, E=1, I=2, R=3
-
-import networkx as nx
 import random
-import numpy as np
-import matplotlib.pyplot as plt
-import argparse
 
 stateList = ['S', 'E', 'I', 'R', 'H', 'D']
-
-def genRandomClique(seq, ub):
-    rs = pow(random.random(), 0.5)
-    cSize = min(1+int(1/rs), len(seq), ub)
-    clique = random.sample(seq, cSize)
-    return clique
-
-
-#Runs infections over a day 
-def cliqueDay(clique, state, p):
-
-    susceptible = 0
-    infected = 0
-    susClique = []
-    for node in clique:
-        if state[node] == 'S':
-            susClique.append(node)
-        if state[node] == 'I':
-            infected += 1
-    susceptible = len(susClique)
-    effP = 1-pow(1-p, infected)
-    newInfs = np.random.binomial(susceptible, effP)
-    
-    for nb in random.sample(susClique, newInfs):
-        state[nb] = 'E'
-
-    return newInfs
-
-
-
-
-#Turns latent into infectious
-def incubate(node, state, p):
-    r = random.random()
-    if r < p:
-        state[node] = 'I'
-
-#Infectious to recovered, hospital, or back into susceptible
-def recover(node, state, pr, ph, pni):
-    r = random.random()
-    if r < pr:
-        state[node] = 'R'
-    elif r < pr+ph:
-        state[node] = 'H'
-    elif r < pr+pni:
-        state[node] = 'S'
-
-#Hospitalized to dead or recovered
-def hospital(node, state, pr, pc):
-    r = random.random()
-    if r < pr:
-        state[node] = 'R'
-    elif r < pr+pc:
-        state[node] = 'D'
 
 
 #Distribution of household sizes
 
 hhWeights = [1, 1, 1, 1, 1, 2, 2, 2, 3, 3, 4, 4, 5]
-
-
 
 nNodes = 2*pow(10, 5) #Trondheim
 #nNodes = 7*pow(10, 5) #Oslo
@@ -92,7 +30,9 @@ cliques = {}
 for layer in layers:
     cliques[layer] = []
 
-state = ['S']*nNodes
+state = []
+for node in range(nNodes):
+    state.append(['S', 0])
 ageGroup = [0]*nNodes
 adults = [] #IDs of adults
 children = [] #IDs of children
@@ -120,8 +60,6 @@ n['VS'] = 15
 #nBs= 115
 #NUs = 62
 #nVh = 29
-
-
 
 
 
@@ -259,7 +197,9 @@ pni = 0.00
 i0 = 20
 
 for i in range(i0):
-    state[seq[i]] = 'I'
+    state[seq[i]][0] = 'I'
+
+
 
 tCounts = {}
 for s in stateList:
@@ -268,6 +208,7 @@ for s in stateList:
 hospt = []
 Reff = []
 
+    
 lInfs = {}
 for layer in layers:
     lInfs[layer] = 0
@@ -278,7 +219,6 @@ dailyrec = []
 
 rel = {'BH': 000, 'BS': 000, 'US': 000, 'VS': 000, 'W': 000, 'R': 000, 'HH': 0}
 
-
 cont = 1
 i = 0
 repeats = 0
@@ -287,87 +227,5 @@ repeats = 0
 for node in seq:
     if ageGroup[node] in ['B', 'A1', 'A2']:
         if random.random() < 0:
-            state[node] = 'R'
+            state[node][0] = 'R'
 
-while cont:
-    
-    cont = 0
-    i+=1
-    if i%10 == 0:
-        print i
-
-    dailyInfs = 0
-    
-    for layer in layers:
-        if True: #i > rel[layer]:
-            for clique in cliques[layer]:
-                infs = cliqueDay(clique, state, pInfs[layer])
-                lInfs[layer] += infs
-                dailyInfs += infs
-                           
-        
-    for node in range(nNodes):
-        if state[node] == 'E':
-            incubate(node, state, pinc)
-            cont = True
-        if state[node] == 'I':
-            recover(node, state, prec, prec*pH[ageGroup[node]], pni)
-            cont = True
-        if state[node] == 'H':
-            hospital(node, state, prec, prec*pD[ageGroup[node]])
-            cont = True
-
-    counts = {}
-    for s in stateList:
-        counts[s] = 0
-    
-    for s in state:
-        counts[s] += 1
-
-    for s in stateList:
-        tCounts[s].append(counts[s])
-        
-    if (i > 2):
-        recoveries = tCounts['R'][-1]-tCounts['R'][-2]
-        Reff.append(float(dailyInfs)/max(float(recoveries), 1))
-        dailyrec.append(recoveries)
-    
-    dailyt.append(dailyInfs)
-
-
-    if (cont == 0):
-        print i, "Reinfect",
-        for layer in layers:
-            print layer, lInfs[layer],
-        print ''
-        repeats += 1
-        for cond in rel:
-            rel[cond] = 0
-
-        
-        if repeats < 2:
-            cont = 1
-            random.shuffle(seq)
-            for j in range(10):
-                state[seq[j]] = 'I'
-
-    
-
-for s in stateList:     
-    print s, counts[s]
-    
-#print healthy, latent, infected, recovered, dead
-
-
-dead = {}
-for group in ageGroups:
-    dead[group] = 0
-    
-for node in seq:
-    if state[node] == 'D':
-        dead[ageGroup[node]] += 1
-print counts
-print "Death count"
-
-for group in ageGroups:
-    print group, dead[group], 'dead out of', len(ageLists[group])
