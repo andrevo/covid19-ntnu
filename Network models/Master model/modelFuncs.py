@@ -1,5 +1,7 @@
 import random
 import numpy as np
+import copy
+
 
 stateList = ['S', 'E', 'I', 'R', 'H', 'D']
 
@@ -112,7 +114,7 @@ def convertVector(inputVector):
 
 def setStrategy(inputVector, probs, layers):
 
-    newP = probs.copy()
+    newP = copy.deepcopy(probs)
     isOpen = {}
     for i in range(len(inputVector)):
         for layer in range(len(layers)):
@@ -127,3 +129,79 @@ def setStrategy(inputVector, probs, layers):
     return isOpen, newP
 
 
+def fullRun(seedState, layers, cliques, ageGroup, strat, baseP):
+    
+    cont = 1
+    i = 0
+    inVec = convertVector(strat)
+    openLayers, p = setStrategy(inVec, baseP, layers)
+
+    stateLog = []
+    infLog = []
+    infLogByLayer = []
+    state = copy.copy(seedState)
+    
+    while cont:
+        i+=1
+        if i%10 == 0:
+            print i
+
+        dailyInfs = 0
+    
+        cont, linfs, dailyInfs = systemDay(cliques, state, ageGroup, openLayers, p, i)
+        stateLog.append(countState(state, stateList))
+        infLog.append(dailyInfs)
+        infLogByLayer.append(linfs)
+    
+    return stateLog, infLog, infLogByLayer, i
+
+def fullRunControl(seedState, layers, cliques, ageGroup, strat, baseP):
+    
+    cont = 1
+    i = 0
+    inVec = convertVector(strat)
+    openLayers, p = setStrategy(inVec, baseP, layers)
+
+    stateLog = []
+    infLog = []
+    infLogByLayer = []
+    state = copy.copy(seedState)
+    
+    while cont:
+        i+=1
+        if i%10 == 0:
+            print i
+
+        dailyInfs = 0
+    
+        cont, linfs, dailyInfs = systemDay(cliques, state, ageGroup, openLayers, p, i)
+        stateLog.append(countState(state, stateList))
+
+        infLog.append(dailyInfs)
+        infLogByLayer.append(linfs)
+    
+    return stateLog, infLog, infLogByLayer, i
+
+
+def findR(stateLog):
+    newInfs = 0
+    newRecs = 0
+    
+    for i in range(1, len(stateLog)):
+        newRecs = stateLog[i]['R']-stateLog[i-1]['R']
+        newInfs = stateLog[i-1]['S']-stateLog[i]['S']
+        if newRecs > 10:
+            return float(newInfs)/float(newRecs)
+    return 0
+    
+
+def genBlankState(n):
+    state = []
+    for i in range(n):
+        state.append('S')
+    return state
+    
+
+def seedState(state, n):
+    for node in random.sample(range(len(state)), n):
+        state[node] = 'I'
