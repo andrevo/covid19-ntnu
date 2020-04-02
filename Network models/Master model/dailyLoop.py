@@ -13,6 +13,19 @@ for s in stateList:
 hospt = []
 Reff = []
 
+stateLog = []
+infLog = []
+infLogByLayer = []
+
+inVec = [0, 0, 1]
+inVec = convertVector(inVec)
+
+baseP = p.copy()
+p = baseP.copy()
+openLayers, p =  setStrategy(inVec, baseP, layers)
+
+
+
 while cont:
     
     i+=1
@@ -21,9 +34,12 @@ while cont:
 
     dailyInfs = 0
 
-    p = {}
     
-    cont = systemDay(cliques, state, ageGroup, p, i)
+    cont, linfs, dailyInfs = systemDay(cliques, state, ageGroup, openLayers, p, i)
+    stateLog.append(countState(state, stateList))
+    infLog.append(dailyInfs)
+    infLogByLayer.append(linfs)
+                
     
 #     counts = {}
 #     for s in stateList:

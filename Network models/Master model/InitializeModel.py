@@ -14,15 +14,8 @@ hCap = 100 #Max hospital capacity
 
 seq = list(range(nNodes)) #Initializes nodes
 
-#pD = {'B': 0.0001, 'A1': 0.0005, 'A2':0.005, 'E1':0.05, 'E2': 0.2 }
 
-#Probability of hospitalization
-pH = {'B': 0.0001, 'A1': 0.02, 'A2':0.08, 'E1':0.15, 'E2': 0.184 } 
 
-#Probability of death, once hospitalized (@capacity)
-pD = {'B': 0.1, 'A1': 0.05, 'A2':0.15, 'E1':0.3, 'E2': 0.40 } 
-
-#Probability of death, once hospitalized (@overcapacity), TBD
 
 layers = ['BH', 'BS', 'US', 'VS', 'W', 'HH', 'R']
 
@@ -181,7 +174,9 @@ cliques['R'].append(seq)
 
 #Layerwise infection probabilities 
 pInfs = {'BH': 0.0002, 'BS': 0.0002, 'US': 0.0002, 'VS': 0.0002, 'W': 0.0002, 'R': 0.5*pow(10, -6), 'HH': 0.1}
+
 qpr = {'BH': 0, 'BS': 0.0, 'US': 0.0002, 'VS': 0.0002, 'W': 0.0002, 'R': 0.5*pow(10, -6), 'HH': 0.1}
+
 
 sPinf = 0.0002 #0.003 approx epidemic threshold for unrestricted (lolno)
 wPinf = 0.0002
@@ -229,3 +224,23 @@ for node in seq:
         if random.random() < 0:
             state[node][0] = 'R'
 
+
+#Keeping original probability format for reference
+#Probability of hospitalization
+pH = {'B': 0.0001, 'A1': 0.02, 'A2':0.08, 'E1':0.15, 'E2': 0.184 } 
+
+#Probability of death, once hospitalized (@capacity)
+pD = {'B': 0.1, 'A1': 0.05, 'A2':0.15, 'E1':0.3, 'E2': 0.40 } 
+
+#Probability of death, once hospitalized (@overcapacity), TBD
+
+
+#Set base probabilities
+            
+p = {}
+p['inf'] = {'BH': 0.0002, 'BS': 0.0002, 'US': 0.0002, 'VS': 0.0002, 'W': 0.0002, 'R': 0.5*pow(10, -6), 'HH': 0.1}
+p['rec'] = 0.1
+p['inc'] = 1
+p['H'] = {'B': 0.0001, 'A1': 0.02, 'A2':0.08, 'E1':0.15, 'E2': 0.184} 
+p['D'] = {'B': 0.1, 'A1': 0.05, 'A2':0.15, 'E1':0.3, 'E2': 0.40 } 
+p['NI'] = 0

@@ -59,23 +59,20 @@ def hospital(node, state, pr, pc, day):
         state[node] = ['D', day]
 
 
-def systemDay(cliques, state, ageGroup, p, day):
+def systemDay(cliques, state, ageGroup, openLayer, p, day):
 
     cont = 0
-    p = {}
-    p['inf'] = {'BH': 0.0002, 'BS': 0.0002, 'US': 0.0002, 'VS': 0.0002, 'W': 0.0002, 'R': 0.5*pow(10, -6), 'HH': 0.1}
-    p['rec'] = 0.1
-    p['inc'] = 1
-    p['H'] = {'B': 0.0001, 'A1': 0.02, 'A2':0.08, 'E1':0.15, 'E2': 0.184} 
-    p['D'] = {'B': 0.1, 'A1': 0.05, 'A2':0.15, 'E1':0.3, 'E2': 0.40 } 
-    p['NI'] = 0
-    
+
+    lInfs = {}
+    dailyInfs = 0
     for layer in cliques:
-        if True: #i > rel[layer]:
+        lInfs[layer] = 0
+        if openLayer[layer]: #i > rel[layer]:
             for clique in cliques[layer]:
                 infs = cliqueDay(clique, state, p['inf'][layer], day)
-                #lInfs[layer] += len(infs)
-                #dailyInfs += len(infs)
+                #print infs
+                lInfs[layer] += len(infs)
+                dailyInfs += len(infs)
                 
                            
         
@@ -90,7 +87,7 @@ def systemDay(cliques, state, ageGroup, p, day):
             hospital(node, state, p['rec'], p['rec']*p['D'][ageGroup[node]], day)
             cont = True
     
-    return cont
+    return cont, lInfs, dailyInfs
 
 
 def countState(state, stateList):
@@ -100,3 +97,33 @@ def countState(state, stateList):
     for node in state:
         count[node[0]] += 1
     return count
+
+
+def convertVector(inputVector):
+    newVec = []
+    for i in range(4):
+        newVec.append(inputVector[0])
+    newVec.append(inputVector[1])
+    newVec.append(1)
+    newVec.append(inputVector[2])
+
+    return newVec
+
+
+def setStrategy(inputVector, probs, layers):
+
+    newP = probs.copy()
+    isOpen = {}
+    for i in range(len(inputVector)):
+        for layer in range(len(layers)):
+
+            isOpen[layers[i]] = bool(inputVector[i])
+
+    qFac = [0.1, 0.2, 0.5, 1]
+
+    
+    newP['inf']['R'] = qFac[inputVector[-1]]*probs['inf']['R']
+    
+    return isOpen, newP
+
+

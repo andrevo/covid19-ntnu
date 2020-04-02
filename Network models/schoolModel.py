@@ -371,3 +371,6 @@ print "Death count"
 
 for group in ageGroups:
     print group, dead[group], 'dead out of', len(ageLists[group])
+
+
+
