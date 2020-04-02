@@ -33,7 +33,6 @@ while cont:
         print i
 
     dailyInfs = 0
-
     
     cont, linfs, dailyInfs = systemDay(cliques, state, ageGroup, openLayers, p, i)
     stateLog.append(countState(state, stateList))
