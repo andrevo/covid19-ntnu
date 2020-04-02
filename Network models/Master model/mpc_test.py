@@ -1,7 +1,10 @@
 import matlab.engine
 
+
+
 eng = matlab.engine.start_matlab()
 eng.addpath(r'~/CASADI/')
+eng.addpath(r'~/Documents/Covid/MPC/models')
 eng.addpath(r'~/Documents/Covid/MPC',nargout=0)
 
 # states: [p^R p^I]^T
@@ -40,6 +43,9 @@ eng.workspace['u_prev'] = 1.0
 
 # Run MPC step function
 u = eng.eval('step_nmpc(x,u_prev,dt_u,model,objective,opt);')
+
+
+
 
 # Simulate constant control (e.g. use the u calculated above, or try the uncontrolled case, i.e. u = n_control-1)
 eng.workspace['x_0'] = x
