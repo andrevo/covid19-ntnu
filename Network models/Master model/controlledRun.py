@@ -15,7 +15,7 @@ eng.addpath(r'~/Documents/Covid/MPC',nargout=0)
 N = 200000.0
 eng.workspace['N'] = N
 # Max ICU capacity [num individuals]
-eng.workspace['ICU_max'] = 10.0
+eng.workspace['ICU_max'] = 100.0
 # Recovery rate [1/days]
 eng.workspace['alpha'] = 0.1
 
@@ -41,7 +41,7 @@ p_R_0 = 0.0
 
 x = matlab.double([[p_R_0],[p_I_0]])
 eng.workspace['x'] = x
-eng.workspace['u_prev'] = 1.0
+eng.workspace['u_prev'] = 0.0
 
 # Run MPC step function
 u = eng.eval('step_nmpc(x,u_prev,dt_u,model,objective,opt);')
@@ -61,8 +61,8 @@ uhist = []
 while cont:
     i+= 1
     
-    if i%10 == 0:
-        print i, u
+    #if i%10 == 0:
+    print i, u
     strat = strats[int(round(u))]
     inVec = convertVector(strat)
     openLayers, p = setStrategy(inVec, baseP, layers)
@@ -78,7 +78,8 @@ while cont:
     x = matlab.double([[R],[I]])
     eng.workspace['x'] = x
     eng.workspace['u_prev'] = u
-    u = eng.eval('step_nmpc(x,u_prev,dt_u,model,objective,opt);')
+    if i%10 == 0:
+        u = eng.eval('step_nmpc(x,u_prev,dt_u,model,objective,opt);')
     uhist.append(u)
     
 # Simulate constant control (e.g. use the u calculated above, or try the uncontrolled case, i.e. u = n_control-1)
