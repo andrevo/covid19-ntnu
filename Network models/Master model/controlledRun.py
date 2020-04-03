@@ -15,7 +15,7 @@ eng.addpath(r'~/Documents/Covid/MPC',nargout=0)
 N = 200000.0
 eng.workspace['N'] = N
 # Max ICU capacity [num individuals]
-eng.workspace['ICU_max'] = 100.0
+eng.workspace['ICU_max'] = 1000.0
 # Recovery rate [1/days]
 eng.workspace['alpha'] = 0.1
 
@@ -72,9 +72,11 @@ while cont:
     infLogByLayer.append(linfs)
     count = countState(state, stateList)
     n = 2*pow(10, 5)
-    I = float(count['I']/n)
-    S = float(count['S']/n)
+    I = float(count['I'])/n
+    S = float(count['S'])/n
+    #print count
     R = 1-I-S
+    print R, I
     x = matlab.double([[R],[I]])
     eng.workspace['x'] = x
     eng.workspace['u_prev'] = u
