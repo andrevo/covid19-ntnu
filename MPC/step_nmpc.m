@@ -1,4 +1,4 @@
-function u = step_nmpc(x,u_prev,dt_u,model,objective,opt)
+function [u,info] = step_nmpc(x,u_prev,dt_u,model,objective,opt)
 
 dyn_fun = model.dyn_fun;
 nx      = model.nx;
@@ -16,10 +16,12 @@ integer       = opt.integer;
 x_0 = x;
 u_0 = u_prev;
 
-[u_opt,~,~] = optimal_control(dyn_fun,stage_cost,term_cost,horizon,dt_u,RK4_steps,x_0,u_0,nx,nu,constraints,only_decrease,integer);
+[u_opt,x_opt,t] = optimal_control(dyn_fun,stage_cost,term_cost,horizon,dt_u,RK4_steps,x_0,u_0,nx,nu,constraints,only_decrease,integer);
 
 u = u_opt(:,1);
-
+info.x_opt = x_opt;
+info.u_opt = u_opt;
+info.t = t;
 end
 
 
