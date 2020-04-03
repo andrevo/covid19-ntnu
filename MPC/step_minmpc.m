@@ -1,4 +1,4 @@
-function [u,info] = step_nmpc(x,u_prev,dt_u,model,objective,opt)
+function [u,info] = step_minmpc(x,u_prev,dt_u,model,objective,opt)
 
 dyn_fun = model.dyn_fun;
 nx      = model.nx;
@@ -11,7 +11,7 @@ constraints = objective.constraints;
 horizon       = opt.horizon;
 RK4_steps     = opt.RK4_steps;
 only_decrease = opt.only_decrease;
-integer       = opt.integer;
+integer       = 1;
 
 x_0 = x;
 u_0 = u_prev;
@@ -23,5 +23,4 @@ info.x_opt = x_opt;
 info.u_opt = u_opt;
 info.t = t;
 end
-
 
