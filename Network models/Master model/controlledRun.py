@@ -61,8 +61,8 @@ uhist = []
 while cont:
     i+= 1
     
-    #if i%10 == 0:
-    print i, u
+    if i%10 == 0:
+        print i, u
     strat = strats[int(round(u))]
     inVec = convertVector(strat)
     openLayers, p = setStrategy(inVec, baseP, layers)
@@ -76,14 +76,16 @@ while cont:
     S = float(count['S'])/n
     #print count
     R = 1-I-S
-    print R, I
+    #print R, I
     x = matlab.double([[R],[I]])
     eng.workspace['x'] = x
     eng.workspace['u_prev'] = u
-    if i%10 == 0:
-        u = eng.eval('step_nmpc(x,u_prev,dt_u,model,objective,opt);')
+    #if i%10 == 0:
+    u = eng.eval('step_nmpc(x,u_prev,dt_u,model,objective,opt);')
     uhist.append(u)
-    
+
+
+
 # Simulate constant control (e.g. use the u calculated above, or try the uncontrolled case, i.e. u = n_control-1)
 # eng.workspace['x_0'] = x
 # eng.workspace['u'] = n_control - 1.0
