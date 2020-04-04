@@ -3,11 +3,6 @@
 
 addpath('C:\Users\emcoates\CasADi\casadi-windows-matlabR2016a-v3.4.5')
 
-
-% NB: important! look closer at this.
-use_beta = 0;
-round_off = 0;
-
 % Set basic parameters
 N = 200000;
 control_list = [.08, .12, .16, .20, .24];

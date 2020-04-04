@@ -13,6 +13,10 @@
 % time units: days
 import casadi.*
 
+% NB: important! look closer at this.
+use_beta = 0;
+round_off = 0;
+
 model = struct;
 
 if(use_beta)
