@@ -123,7 +123,7 @@ def setStrategy(inputVector, probs, layers):
             isOpen[layers[i]] = bool(inputVector[i])
 
     qFac = [0.1, 0.2, 0.5, 1]
-
+    isOpen['R'] = True
     
     newP['inf']['R'] = qFac[inputVector[-1]]*probs['inf']['R']
     
@@ -194,7 +194,23 @@ def findR(stateLog):
         if newRecs > 10:
             return float(newInfs)/float(newRecs)
     return 0
-    
+
+def analyticalR(cliques, openLayers, state, p):
+    expInfs = [0]*len(state)
+    for layer in cliques:
+            
+        if openLayers[layer]:
+            for clique in cliques[layer]:
+                for node in clique:
+                        
+                    expInfs[node] += p['inf'][layer]*len(clique)
+
+    rByNode = []
+
+    for node in expInfs:
+        rByNode.append(node/p['rec'])
+    return np.mean(rByNode)
+
 
 def genBlankState(n):
     state = []
