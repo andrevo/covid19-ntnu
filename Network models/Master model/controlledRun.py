@@ -1,3 +1,4 @@
+import matplotlib.pyplot as plt
 import matlab.engine
 from InitializeModel import *
 from modelFuncs import *
@@ -15,17 +16,19 @@ eng.addpath(r'~/Documents/Covid/MPC',nargout=0)
 N = 200000.0
 eng.workspace['N'] = N
 # Max ICU capacity [num individuals]
-eng.workspace['ICU_max'] = 1000.0
+eng.workspace['ICU_max'] = 100.0
 # Recovery rate [1/days]
 eng.workspace['alpha'] = 0.1
 
 # Fraction of infected that need ICU
-eng.workspace['k_icu'] = 0.1
+eng.workspace['k_icu'] = 0.02
 # Number of discrete control combinations
 n_control = 5.0
 eng.workspace['n_control'] = n_control
 # Resulting beta values for each control combination (sorted in increasing order)
-eng.workspace['control_list'] = matlab.double([.1825, .210, .233, .254, .280])
+eng.workspace['control_list'] = matlab.double([.01, .06, .09, .133, .183]) #Analytical numbers
+#eng.workspace['control_list'] = matlab.double([.1825, .210, .233, .254, .280]) #Empirical numbers
+
 #eng.workspace['control_list'] = matlab.double([0.01, 0.09, 0.12, 0.17, 0.23])
 
 # Run init script
