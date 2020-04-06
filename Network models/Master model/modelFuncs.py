@@ -6,6 +6,58 @@ import copy
 
 stateList = ['S', 'E', 'I', 'R', 'H', 'D']
 
+
+def readModel(ageFile, cliqueFile):
+    f = open(ageFile)
+    ageGroup = []
+    nodeID = 0
+    for line in f:
+        prevID = nodeID
+        line = line.rstrip().split(';')
+        nodeID = float(line[0])
+        age = float(line[1])
+        if (nodeID-prevID) != 1:
+            print ('Out of sequence IDs')
+        if age < 19:
+            ageGroup.append('B')
+        elif age < 55:
+            ageGroup.append('A1')
+        elif age < 65:
+            ageGroup.append('A2')
+        elif age < 80:
+            ageGroup.append('E1')
+        else:
+            ageGroup.append('E2')
+
+
+    f.close()
+        
+    layers = ['BH', 'BS', 'US', 'VS', 'W', 'HH', 'R']
+    translations = {'Kindergarten': 'BH', 'PrimarySchool': 'BS', 'Household':'HH', 'SecondarySchool': 'US', 'UpperSecondarySchool': 'VS', 'Workplace': 'W', 'NursingHome':'NH'}
+    
+
+    
+    cliques = {}
+    
+    for layer in layers:
+        cliques[layer] = []    
+
+    f = open(cliqueFile)
+    for line in f:
+        #print line
+        splitLine = line.rstrip().split(';')
+        #print splitLine
+        if (splitLine[1] != '') & (splitLine[0] != 'NursingHome'):
+            clique = []
+            for i in splitLine[1:]:
+                clique.append(int(i)-1)
+            
+            cliques[translations[splitLine[0]]].append(clique)
+
+    f.close()
+    cliques['R'] = [range(len(ageGroup))]
+    return layers, ageGroup, cliques
+
 def genRandomClique(seq, ub):
     rs = pow(random.random(), 0.5)
     cSize = min(1+int(1/rs), len(seq), ub)
@@ -29,7 +81,7 @@ def cliqueDay(clique, state, p, day):
     #newInfs = np.random.binomial(susceptible, effP)
     newInfs = random.sample(susClique, np.random.binomial(susceptible, effP))
     for nb in newInfs:
-        state[nb] = ['E', day]
+        state[nb] = ['E', day, max(day+1, round(day+np.random.normal(10, 3)))]
         
         
     return newInfs
@@ -41,8 +93,8 @@ def cliqueDay(clique, state, p, day):
 def incubate(node, state, p, day):
     r = random.random()
     if r < p:
-        state[node] = ['I', day]
-
+        state[node][0] = 'I'
+        
 #Infectious to recovered, hospital, or back into susceptible
 def recover(node, state, pr, ph, pni, day):
     r = random.random()
@@ -53,6 +105,18 @@ def recover(node, state, pr, ph, pni, day):
     elif r < pr+ph+pni:
         state[node] = ['S', day]
 
+#Recovery on predetermined time schedule
+def recoverTimed(node, state, ph, pni, day):
+
+    if state[node][2] == day:
+        r = random.random()
+        if r < ph:
+            state[node] = ['H', day, max(day+1, round(day+np.random.normal(10,3)))]
+        elif r < ph+pni:
+            state[node] = ['S', day]
+        else:
+            state[node] = ['R', day]
+
 #Hospitalized to dead or recovered
 def hospital(node, state, pr, pc, day):
     r = random.random()
@@ -61,6 +125,14 @@ def hospital(node, state, pr, pc, day):
     elif r < pr+pc:
         state[node] = ['D', day]
 
+#Hospitalization on predetermined time schedule
+def hospitalTimed(node, state, pc, day):
+    if state[node][2] == day:
+        r = random.random()
+        if r < pc:
+            state[node] = ['D', day]
+        else:
+            state[node] = ['R', day]
 
 def systemDay(cliques, state, ageGroup, openLayer, p, day):
 
@@ -70,6 +142,7 @@ def systemDay(cliques, state, ageGroup, openLayer, p, day):
     dailyInfs = 0
     for layer in cliques:
         lInfs[layer] = 0
+
         if openLayer[layer]: #i > rel[layer]:
             for clique in cliques[layer]:
                 infs = cliqueDay(clique, state, p['inf'][layer], day)
@@ -85,9 +158,11 @@ def systemDay(cliques, state, ageGroup, openLayer, p, day):
             cont = True
         if state[node][0] == 'I':
             recover(node, state, p['rec'], p['rec']*p['H'][ageGroup[node]], p['NI'], day)
+            #recoverTimed(node, state, p['H'][ageGroup[node]], p['NI'], day)
             cont = True
         if state[node][0] == 'H':
             hospital(node, state, p['rec'], p['rec']*p['D'][ageGroup[node]], day)
+            #hospitalTimed(node, state, p['D'][ageGroup[node]], day)
             cont = True
     
     return cont, lInfs, dailyInfs
@@ -123,7 +198,7 @@ def setStrategy(inputVector, probs, layers):
             isOpen[layers[i]] = bool(inputVector[i])
 
     qFac = [0.1, 0.2, 0.5, 1]
-
+    isOpen['R'] = True
     
     newP['inf']['R'] = qFac[inputVector[-1]]*probs['inf']['R']
     
@@ -194,15 +269,31 @@ def findR(stateLog):
         if newRecs > 10:
             return float(newInfs)/float(newRecs)
     return 0
-    
+
+def analyticalR(cliques, openLayers, state, p):
+    expInfs = [0]*len(state)
+    for layer in cliques:
+            
+        if openLayers[layer]:
+            for clique in cliques[layer]:
+                for node in clique:
+                        
+                    expInfs[node] += p['inf'][layer]*len(clique)
+
+    rByNode = []
+
+    for node in expInfs:
+        rByNode.append(node/p['rec'])
+    return np.mean(rByNode)
+
 
 def genBlankState(n):
     state = []
     for i in range(n):
-        state.append('S')
+        state.append(['S', 0])
     return state
     
 
 def seedState(state, n):
     for node in random.sample(range(len(state)), n):
-        state[node] = 'I'
+        state[node] = ['I', 0, random.randint(1, 10)]
