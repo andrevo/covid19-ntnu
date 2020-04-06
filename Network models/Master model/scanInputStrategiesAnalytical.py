@@ -29,10 +29,10 @@ for i in [0, 1]:
             seedState(state, 1000)
             
             r = analyticalR(cliques, openLayers, state, p)
-            print strat
+            #print strat
  #           print openLayers
  #           print p['inf']
-            print 'Effective R:', r
-            print >> f, str(strat[0])+'\t'+str(strat[1])+'\t'+str(strat[2])+'\t'+str(r)
-
+            #print 'Effective R:', r
+            #print >> f, str(strat[0])+'\t'+str(strat[1])+'\t'+str(strat[2])+'\t'+str(r)
+            print r
 f.close()

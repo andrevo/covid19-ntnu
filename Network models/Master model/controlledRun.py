@@ -26,7 +26,11 @@ eng.workspace['k_icu'] = 0.02
 n_control = 5.0
 eng.workspace['n_control'] = n_control
 # Resulting beta values for each control combination (sorted in increasing order)
-eng.workspace['control_list'] = matlab.double([.01, .06, .09, .133, .183]) #Analytical numbers
+#eng.workspace['control_list'] = matlab.double([.01, .06, .09, .133, .183]) #Analytical numbers, workplaces first
+
+eng.workspace['control_list'] = matlab.double([.01, .062, .092, .133, .183]) #Analytical numbers, schools first
+
+
 #eng.workspace['control_list'] = matlab.double([.1825, .210, .233, .254, .280]) #Empirical numbers
 
 #eng.workspace['control_list'] = matlab.double([0.01, 0.09, 0.12, 0.17, 0.23])
@@ -49,6 +53,9 @@ eng.workspace['u_prev'] = 0.0
 # Run MPC step function
 u = eng.eval('step_nmpc(x,u_prev,dt_u,model,objective,opt);')
 
+state = genBlankState(2*pow(10, 5))
+seedState(state, 20)
+
 
 cont = 1
 i = 0
@@ -58,7 +65,8 @@ infLog = []
 infLogByLayer = []
 #state = copy.copy(seedState)
 
-strats = [[0, 0, 1], [0, 1, 1], [0, 1, 2], [1, 1, 2], [1, 1, 3]]
+strats = [[0, 0, 1], [0, 1, 1], [0, 1, 2], [1, 1, 2], [1, 1, 3]] #Workplaces first
+strats = [[0, 0, 1], [1, 0, 1], [1, 0, 2], [1, 1, 2], [1, 1, 3]] #Schools
 uhist = []
 
 while cont:
