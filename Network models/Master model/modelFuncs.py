@@ -6,6 +6,58 @@ import copy
 
 stateList = ['S', 'E', 'I', 'R', 'H', 'D']
 
+
+def readModel(ageFile, cliqueFile):
+    f = open(ageFile)
+    ageGroup = []
+    nodeID = 0
+    for line in f:
+        prevID = nodeID
+        line = line.rstrip().split(';')
+        nodeID = float(line[0])
+        age = float(line[1])
+        if (nodeID-prevID) != 1:
+            print ('Out of sequence IDs')
+        if age < 19:
+            ageGroup.append('B')
+        elif age < 55:
+            ageGroup.append('A1')
+        elif age < 65:
+            ageGroup.append('A2')
+        elif age < 80:
+            ageGroup.append('E1')
+        else:
+            ageGroup.append('E2')
+
+
+    f.close()
+        
+    layers = ['BH', 'BS', 'US', 'VS', 'W', 'HH', 'R']
+    translations = {'Kindergarten': 'BH', 'PrimarySchool': 'BS', 'Household':'HH', 'SecondarySchool': 'US', 'UpperSecondarySchool': 'VS', 'Workplace': 'W'}
+    
+
+    
+    cliques = {}
+    
+    for layer in layers:
+        cliques[layer] = []    
+
+    f = open(cliqueFile)
+    for line in f:
+        #print line
+        splitLine = line.rstrip().split(';')
+        #print splitLine
+        if splitLine[1] != '':
+            clique = []
+            for i in splitLine[1:]:
+                clique.append(int(i)-1)
+            
+            cliques[translations[splitLine[0]]].append(clique)
+
+    f.close()
+    cliques['R'] = range(len(ageGroup))
+    return ageGroup, cliques
+
 def genRandomClique(seq, ub):
     rs = pow(random.random(), 0.5)
     cSize = min(1+int(1/rs), len(seq), ub)
