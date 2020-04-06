@@ -81,7 +81,7 @@ def cliqueDay(clique, state, p, day):
     #newInfs = np.random.binomial(susceptible, effP)
     newInfs = random.sample(susClique, np.random.binomial(susceptible, effP))
     for nb in newInfs:
-        state[nb] = ['E', day]
+        state[nb] = ['E', day, round(day+np.random.normal(7, 2))]
         
         
     return newInfs
@@ -94,7 +94,7 @@ def incubate(node, state, p, day):
     r = random.random()
     if r < p:
         state[node] = ['I', day]
-
+        
 #Infectious to recovered, hospital, or back into susceptible
 def recover(node, state, pr, ph, pni, day):
     r = random.random()
@@ -267,7 +267,7 @@ def analyticalR(cliques, openLayers, state, p):
 def genBlankState(n):
     state = []
     for i in range(n):
-        state.append('S')
+        state.append(['S', 0])
     return state
     
 
