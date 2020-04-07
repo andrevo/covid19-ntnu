@@ -32,7 +32,7 @@ def readModel(ageFile, cliqueFile):
 
     f.close()
         
-    layers = ['BH', 'BS', 'US', 'VS', 'W', 'HH', 'R']
+    layers = ['BH', 'BS', 'US', 'VS', 'W', 'HH', 'NH', 'R']
     translations = {'Kindergarten': 'BH', 'PrimarySchool': 'BS', 'Household':'HH', 'SecondarySchool': 'US', 'UpperSecondarySchool': 'VS', 'Workplace': 'W', 'NursingHome':'NH'}
     
 
@@ -47,7 +47,7 @@ def readModel(ageFile, cliqueFile):
         #print line
         splitLine = line.rstrip().split(';')
         #print splitLine
-        if (splitLine[1] != '') & (splitLine[0] != 'NursingHome'):
+        if (splitLine[1] != ''):
             clique = []
             for i in splitLine[1:]:
                 clique.append(int(i)-1)
@@ -176,15 +176,23 @@ def countState(state, stateList):
         count[node[0]] += 1
     return count
 
+def genVector(layers):
+    vec = {}
+    for layer in layers:
+        vec[layer] = 1
+    return vec
 
 def convertVector(inputVector):
-    newVec = []
-    for i in range(4):
-        newVec.append(inputVector[0])
-    newVec.append(inputVector[1])
-    newVec.append(1)
-    newVec.append(inputVector[2])
-
+    newVec = {}
+    newVec = {}
+    for layer in inputVector:
+        if layer == 'S':
+            newVec['BH'] = inputVector[layer]
+            newVec['BS'] = inputVector[layer]
+            newVec['US'] = inputVector[layer]
+            newVec['VS'] = inputVector[layer]
+        else:
+            newVec[layer] = inputVector[layer]
     return newVec
 
 
@@ -192,15 +200,16 @@ def setStrategy(inputVector, probs, layers):
 
     newP = copy.deepcopy(probs)
     isOpen = {}
-    for i in range(len(inputVector)):
-        for layer in range(len(layers)):
+    for layer in inputVector:
+        isOpen[layer] = bool(inputVector[layer])
 
-            isOpen[layers[i]] = bool(inputVector[i])
-
+    isOpen['NH'] = True
+    isOpen['HH'] = True
     qFac = [0.1, 0.2, 0.5, 1]
     isOpen['R'] = True
+
     
-    newP['inf']['R'] = qFac[inputVector[-1]]*probs['inf']['R']
+    newP['inf']['R'] = qFac[inputVector['R']]*probs['inf']['R']
     
     return isOpen, newP
 
