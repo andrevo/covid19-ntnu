@@ -1,6 +1,7 @@
 import random
 import numpy as np
 import copy
+import networkx as nx
 
 
 
@@ -295,7 +296,19 @@ def analyticalR(cliques, openLayers, state, p):
         rByNode.append(node/p['rec'])
     return np.mean(rByNode)
 
-
+def genActivity(n, exp):
+    activity = {}
+    for node in range(n):
+        activity[n] = int(pow(1-random.random(), exp))
+    return activity
+        
+def randomLayer(act, state, p, day):
+    for node in act:
+        n = random.randint(1, act[node])
+    clique = random.sample(state, n)
+    newInfs = cliqueDay(clique, state, p, day)
+    return newInfs
+    
 def genBlankState(n):
     state = []
     for i in range(n):
