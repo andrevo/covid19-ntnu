@@ -7,6 +7,23 @@ import networkx as nx
 
 stateList = ['S', 'E', 'I', 'R', 'H', 'D']
 
+def setRisk(ageFile, riskTableFile):
+    riskTable = {}
+    f = open(riskTableFile)
+    for line in f:
+        splitLine = line.rstrip().split('\t')
+        riskTable[splitLine[0]] = float(splitLine[1])
+
+    f.close()
+    f = open(ageFile)
+    atRisk = {}
+    for line in f:
+        splitLine = line.rstrip().split('\t')
+        if random.random() < riskTable[splitLine[1]]:
+            atRisk[splitLine[0]] = True
+        else:
+            atRisk[splitLine[1]] = False
+
 
 def readModel(ageFile, cliqueFile):
     f = open(ageFile)
@@ -29,7 +46,7 @@ def readModel(ageFile, cliqueFile):
             ageGroup.append('E1')
         else:
             ageGroup.append('E2')
-
+        
 
     f.close()
         
