@@ -1,6 +1,13 @@
 function [u_opt,x_opt,t] = optimal_control(dyn_fun,stage_cost,term_cost,horizon,dt_u,RK4_steps,x_0,u_0,nx,nu,constraints,only_decrease,integer)
 import casadi.*
 
+% TODO: remove only_decrease flag eventually at next major cleanup.
+% TODO: add flag to control debug output.
+% TODO: add parameter for cost on du.
+
+% TODO: add parameter for this..
+du_weight = 0;
+
 T  = horizon;  % [days] time horizon
 dt = dt_u;   % [days] sample time for discretization
 N = T/dt; % number of control intervals
@@ -15,6 +22,17 @@ u_min = constraints.u_min;
 % State Constraints
 x_max = constraints.x_max;
 x_min = constraints.x_min;
+
+du_max = Inf;
+du_min = -Inf;
+
+if(isfield(constraints,'du_max'))
+   du_max  =  constraints.du_max; %  e.g. 1
+end
+
+if(isfield(constraints,'du_min'))
+   du_min = constraints.du_min; % e.g. -1
+end
 
 % Objective function
 xdot = dyn_fun(x,u);
@@ -45,9 +63,16 @@ end
 F = Function('F', {X0, U}, {X, Q}, {'x0','u'}, {'xf', 'qf'});
 
 % Initial guess for u
-u_start = [DM(0.)] * N;
+u_start = u_max*ones(1,N);
 
-% TODO: finish this, such that intial guess is feasible.
+% Get a feasible trajectory as an initial guess
+xk = x_0;
+x_start = [xk];
+for k =1:N
+   ret = F('x0',xk, 'u',u_start(k));
+    xk = ret.xf;
+    x_start = [x_start xk];
+end
 
 %% Formulate NLP
 
@@ -81,7 +106,7 @@ for k=0:N-1
     w = {w{:}, Uk};
     lbw = [lbw; u_min];
     ubw = [ubw; u_max];
-    w0 = [w0;  u_0];
+    w0 = [w0;  u_start(:,k+1)];
     discrete = [discrete;ones(nu,1)];
 
     % Integrate till the end of the interval
@@ -89,12 +114,15 @@ for k=0:N-1
     Xk_end = Fk.xf;
     J=J+Fk.qf;
     
+    % Cost on change in u:
+    J = J + du_weight*(Uk-U_prev)^2;
+    
     % New NLP variable for state at end of interval
     Xk = MX.sym(['X_' num2str(k+1)], nx);
     w = [w, {Xk}];
     lbw = [lbw; x_min];
     ubw = [ubw; x_max];
-    w0 = [w0; x_0];
+    w0 = [w0; x_start(:,k+2)];
     discrete = [discrete;zeros(nx,1)];
 
     % Add equality constraint
@@ -102,13 +130,11 @@ for k=0:N-1
     lbg = [lbg; zeros(nx,1)];
     ubg = [ubg; zeros(nx,1)];
     
-    if(only_decrease)
-        g = [g, {Uk-U_prev}];
-        lbg = [lbg; 0];
-        ubg = [ubg; Inf];
+    g = [g, {Uk-U_prev}];
+    lbg = [lbg; du_min];
+    ubg = [ubg; du_max];
 
-        U_prev = Uk;
-    end
+    U_prev = Uk;
 end
 
 % Terminal cost
