@@ -359,7 +359,28 @@ def genActivity(n, exp):
     for node in range(n):
         activity[n] = int(pow(1-random.random(), exp))
     return activity
-        
+
+def dynRandomLayer(state, act, layer, p):
+    for node in state:
+        if state[node] == 'I':
+            conns = random.randint(0, act[node])
+            newInfs = np.random.binomial(conns, p)
+            for nNode in random.sample(layer, newInfs):
+                state[nNode] == 'E'
+                
+        if state[node] == 'S':
+            conns = random.randint(0, act[node])
+            iNeighbors = 0
+            for nNode in random.sample(layer, conns):
+                if state[nNode] == 'I':
+                    iNeighbors += 1
+            if random.random() < 1-pow(1-p, iNeighbors):
+                state[node] == 'E'
+                
+
+
+                
+
 def randomLayer(act, state, p, day):
     for node in act:
         n = random.randint(1, act[node])
