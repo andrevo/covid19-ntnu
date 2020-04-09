@@ -174,7 +174,7 @@ def recoverTimed(node, state, ph, pni, picu, day):
             state[node] = ['R', day]
 
 #Hospitalized to dead or recovered
-def hospital(node, state, pr, pc, picu day):
+def hospital(node, state, pr, pc, day):
     r = random.random()
     if r < pr:
         state[node] = ['R', day]
@@ -185,8 +185,8 @@ def hospital(node, state, pr, pc, picu day):
 def hospitalTimed(node, state, pc, day):
     if state[node][2] == day:
         r = random.random()
-        if len(state[node] == 4]):
-            state[node] = ['ICU', day, max(day+1, round(day.np.random.normal(10,3)))]
+        if len(state[node]) == 4:
+            state[node] = ['ICU', day, max(day+1, round(day+np.random.normal(10,3)))]
         if r < pc:
             state[node] = ['D', day]
         else:
@@ -216,12 +216,12 @@ def systemDay(cliques, state, ageGroup, openLayer, p, day):
             incubate(node, state, p['inc'], day)
             cont = True
         if state[node][0] == 'I':
-            recover(node, state, p['rec'], p['rec']*p['H'][ageGroup[node]], p['NI'], day)
-            #recoverTimed(node, state, p['H'][ageGroup[node]], p['NI'], day)
+            #recover(node, state, p['rec'], p['rec']*p['H'][ageGroup[node]], p['NI'], day)
+            recoverTimed(node, state, p['H'][ageGroup[node]], p['NI'], 0.3, day)
             cont = True
         if state[node][0] == 'H':
-            hospital(node, state, p['rec'], p['rec']*p['D'][ageGroup[node]], day)
-            #hospitalTimed(node, state, p['D'][ageGroup[node]], day)
+            #hospital(node, state, p['rec'], p['rec']*p['D'][ageGroup[node]], day)
+            hospitalTimed(node, state, p['D'][ageGroup[node]], day)
             cont = True
     
     return cont, lInfs, dailyInfs
@@ -338,6 +338,7 @@ def findR(stateLog):
             return float(newInfs)/float(newRecs)
     return 0
 
+
 def analyticalR(cliques, openLayers, state, p):
     expInfs = [0]*len(state)
     for layer in cliques:
@@ -360,6 +361,7 @@ def genActivity(n, exp):
         activity[n] = int(pow(1-random.random(), exp))
     return activity
 
+
 def dynRandomLayer(state, act, layer, p):
     for node in state:
         if state[node] == 'I':
@@ -376,8 +378,6 @@ def dynRandomLayer(state, act, layer, p):
                     iNeighbors += 1
             if random.random() < 1-pow(1-p, iNeighbors):
                 state[node] == 'E'
-                
-
 
                 
 
