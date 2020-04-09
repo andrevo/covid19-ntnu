@@ -7,14 +7,17 @@ import networkx as nx
 
 stateList = ['S', 'E', 'I', 'R', 'H', 'ICU', 'VT', 'D']
 
-def setRisk(ageFile, riskTableFile):
+
+#Sets binary risk from file
+def setRisk(ageFile, riskTableFile, attrs):
     riskTable = {}
     f = open(riskTableFile)
     for line in f:
         splitLine = line.rstrip().split('\t')
         riskTable[splitLine[0]] = float(splitLine[1])
-
     f.close()
+
+    
     f = open(ageFile)
     atRisk = {}
     for line in f:
@@ -22,10 +25,14 @@ def setRisk(ageFile, riskTableFile):
         if random.random() < riskTable[splitLine[1]]:
             atRisk[splitLine[0]] = True
         else:
-            atRisk[splitLine[1]] = False
+            atRisk[splitLine[0]] = False
 
+    return atRisk
 
+            
+#Builds household/school/work structure from file
 def readModel(ageFile, cliqueFile):
+
     f = open(ageFile)
     ageGroup = []
     ageNb = []
@@ -49,14 +56,16 @@ def readModel(ageFile, cliqueFile):
             ageGroup.append('E2')
         ageNb.append(age)
 
+
     f.close()
-        
+
+
     layers = ['BH', 'BS', 'US', 'VS', 'W', 'HH', 'NH', 'R']
     translations = {'Kindergarten': 'BH', 'PrimarySchool': 'BS', 'Household':'HH', 'SecondarySchool': 'US', 'UpperSecondarySchool': 'VS', 'Workplace': 'W', 'NursingHome':'NH'}
-    
 
-    
+
     cliques = {}
+
     
     for layer in layers:
         cliques[layer] = []    
@@ -134,11 +143,9 @@ def cliqueDay(clique, state, p, day):
     #newInfs = np.random.binomial(susceptible, effP)
     newInfs = random.sample(susClique, np.random.binomial(susceptible, effP))
     for nb in newInfs:
-        state[nb] = ['E', day, max(day+1, round(day+np.random.normal(10, 3)))]
-        
+        state[nb] = ['E', day, max(day+1, round(day+np.random.normal(10, 3)))]        
         
     return newInfs
-
 
 
 
@@ -160,19 +167,24 @@ def recover(node, state, pr, ph, pni, day):
 
 #Recovery on predetermined time schedule
 def recoverTimed(node, state, ph, pni, picu, day):
-
+    
     if state[node][2] == day:
         r = random.random()
         if r < ph:
             if random.random() < picu:
                 state[node] = ['H', day, max(day+1, round(day+np.random.normal(6,3))), 'ICU flag']
+
             else:
                 state[node] = ['H', day, max(day+1, round(day+np.random.normal(8,3)))]
+
+
         elif r < ph+pni:
             state[node] = ['S', day]
         else:
             state[node] = ['R', day]
 
+
+    
 #Hospitalized to dead or recovered
 def hospital(node, state, pr, pc, day):
     r = random.random()
@@ -360,7 +372,7 @@ def analyticalR(cliques, openLayers, state, p):
 def genActivity(n, exp):
     activity = {}
     for node in range(n):
-        activity[n] = int(pow(1-random.random(), exp))
+        activity[node] = int(pow(1-random.random(), exp))
     return activity
 
 
