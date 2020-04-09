@@ -47,7 +47,7 @@ def readModel(ageFile, cliqueFile):
             ageGroup.append('E1')
         else:
             ageGroup.append('E2')
-        ageNumber.append[age]
+        ageNb.append(age)
 
     f.close()
         
@@ -187,7 +187,7 @@ def hospitalTimed(node, state, pc, day):
         r = random.random()
         if len(state[node]) == 4:
             state[node] = ['ICU', day, max(day+1, round(day+np.random.normal(10,3)))]
-        if r < pc:
+        elif r < pc:
             state[node] = ['D', day]
         else:
             state[node] = ['R', day]
@@ -223,6 +223,8 @@ def systemDay(cliques, state, ageGroup, openLayer, p, day):
             #hospital(node, state, p['rec'], p['rec']*p['D'][ageGroup[node]], day)
             hospitalTimed(node, state, p['D'][ageGroup[node]], day)
             cont = True
+        if state[node][0] == 'ICU':
+            hospitalTimed(node, state, p['D'][ageGroup[node]], day)
     
     return cont, lInfs, dailyInfs
 

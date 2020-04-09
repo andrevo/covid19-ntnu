@@ -172,11 +172,7 @@ rCliques = []
 cliques['R'].append(seq)
 
 
-
-
 i0 = 20
-
-
 #Initial infection
 for i in range(i0):
     state[seq[i]][0] = 'I'
@@ -190,22 +186,6 @@ for node in seq:
             state[node][0] = 'R'
 
 
-#Keeping original probability format for reference
-#Probability of hospitalization
-pH = {'B': 0.0001, 'A1': 0.02, 'A2':0.08, 'E1':0.15, 'E2': 0.184 } 
-
-#Probability of death, once hospitalized (@capacity)
-pD = {'B': 0.1, 'A1': 0.05, 'A2':0.15, 'E1':0.3, 'E2': 0.40 } 
-
-#Probability of death, once hospitalized (@overcapacity), TBD
 
 
-#Set base probabilities
-            
-baseP = {}
-baseP['inf'] = {'BH': 0.0002, 'BS': 0.0002, 'US': 0.0002, 'VS': 0.0002, 'W': 0.0002, 'R': 0.5*pow(10, -6), 'HH': 0.1}
-baseP['rec'] = 0.1
-baseP['inc'] = 1
-baseP['H'] = {'B': 0.0001, 'A1': 0.02, 'A2':0.08, 'E1':0.15, 'E2': 0.184} 
-baseP['D'] = {'B': 0.1, 'A1': 0.05, 'A2':0.15, 'E1':0.3, 'E2': 0.40 } 
-baseP['NI'] = 0
+
