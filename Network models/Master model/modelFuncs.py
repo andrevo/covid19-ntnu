@@ -1,15 +1,34 @@
 import random
 import numpy as np
 import copy
+import networkx as nx
 
 
 
-stateList = ['S', 'E', 'I', 'R', 'H', 'D']
+stateList = ['S', 'E', 'I', 'R', 'H', 'ICU', 'VT', 'D']
+
+def setRisk(ageFile, riskTableFile):
+    riskTable = {}
+    f = open(riskTableFile)
+    for line in f:
+        splitLine = line.rstrip().split('\t')
+        riskTable[splitLine[0]] = float(splitLine[1])
+
+    f.close()
+    f = open(ageFile)
+    atRisk = {}
+    for line in f:
+        splitLine = line.rstrip().split('\t')
+        if random.random() < riskTable[splitLine[1]]:
+            atRisk[splitLine[0]] = True
+        else:
+            atRisk[splitLine[1]] = False
 
 
 def readModel(ageFile, cliqueFile):
     f = open(ageFile)
     ageGroup = []
+    ageNb = []
     nodeID = 0
     for line in f:
         prevID = nodeID
@@ -28,11 +47,11 @@ def readModel(ageFile, cliqueFile):
             ageGroup.append('E1')
         else:
             ageGroup.append('E2')
-
+        ageNb.append(age)
 
     f.close()
         
-    layers = ['BH', 'BS', 'US', 'VS', 'W', 'HH', 'R']
+    layers = ['BH', 'BS', 'US', 'VS', 'W', 'HH', 'NH', 'R']
     translations = {'Kindergarten': 'BH', 'PrimarySchool': 'BS', 'Household':'HH', 'SecondarySchool': 'US', 'UpperSecondarySchool': 'VS', 'Workplace': 'W', 'NursingHome':'NH'}
     
 
@@ -47,7 +66,7 @@ def readModel(ageFile, cliqueFile):
         #print line
         splitLine = line.rstrip().split(';')
         #print splitLine
-        if (splitLine[1] != '') & (splitLine[0] != 'NursingHome'):
+        if (splitLine[1] != ''):
             clique = []
             for i in splitLine[1:]:
                 clique.append(int(i)-1)
@@ -56,7 +75,7 @@ def readModel(ageFile, cliqueFile):
 
     f.close()
     cliques['R'] = [range(len(ageGroup))]
-    return layers, ageGroup, cliques
+    return layers, ageGroup, ageNb, cliques
 
 def genRandomClique(seq, ub):
     rs = pow(random.random(), 0.5)
@@ -65,7 +84,41 @@ def genRandomClique(seq, ub):
     return clique
 
 
-#Runs infections over a day 
+def filterCliqueAge(clique, age, cutoff, mode):
+    newClique = []
+    for node in clique:
+        if mode == 'highPass':
+            if age[node] > cutoff:
+                newClique.append(node)
+        if mode == 'lowPass':
+            if age[node] < cutoff:
+                newClique.append(node)
+    return newClique
+
+def filterCliqueRisk(clique, atRisk, mode):
+    newClique = []
+    for node in clique:
+        if mode == 'highPass':
+            if atRisk[node]:
+                newClique.append(node)
+        if mode == 'lowPass':
+            if not atRisk[node]:
+                newClique.append(node)
+    return newClique    
+
+def filterCliqueAttribute(clique, attrs, attrID, cutoff, mode):
+    newClique = []
+    for node in clique:
+        if mode == 'highPass':
+            if attribute[attrID] > cutoff:
+                newClique.append(node)
+        if mode == 'lowPass':
+            if attribute[attrID] < cutoff:
+                newClique.append(node)
+    return newClique
+
+#Runs infections over a day
+
 def cliqueDay(clique, state, p, day):
 
     susceptible = 0
@@ -106,12 +159,15 @@ def recover(node, state, pr, ph, pni, day):
         state[node] = ['S', day]
 
 #Recovery on predetermined time schedule
-def recoverTimed(node, state, ph, pni, day):
+def recoverTimed(node, state, ph, pni, picu, day):
 
     if state[node][2] == day:
         r = random.random()
         if r < ph:
-            state[node] = ['H', day, max(day+1, round(day+np.random.normal(10,3)))]
+            if random.random() < picu:
+                state[node] = ['H', day, max(day+1, round(day+np.random.normal(6,3))), 'ICU flag']
+            else:
+                state[node] = ['H', day, max(day+1, round(day+np.random.normal(8,3)))]
         elif r < ph+pni:
             state[node] = ['S', day]
         else:
@@ -124,16 +180,19 @@ def hospital(node, state, pr, pc, day):
         state[node] = ['R', day]
     elif r < pr+pc:
         state[node] = ['D', day]
-
+        
 #Hospitalization on predetermined time schedule
 def hospitalTimed(node, state, pc, day):
     if state[node][2] == day:
         r = random.random()
-        if r < pc:
+        if len(state[node]) == 4:
+            state[node] = ['ICU', day, max(day+1, round(day+np.random.normal(10,3)))]
+        elif r < pc:
             state[node] = ['D', day]
         else:
             state[node] = ['R', day]
 
+            
 def systemDay(cliques, state, ageGroup, openLayer, p, day):
 
     cont = 0
@@ -157,13 +216,15 @@ def systemDay(cliques, state, ageGroup, openLayer, p, day):
             incubate(node, state, p['inc'], day)
             cont = True
         if state[node][0] == 'I':
-            recover(node, state, p['rec'], p['rec']*p['H'][ageGroup[node]], p['NI'], day)
-            #recoverTimed(node, state, p['H'][ageGroup[node]], p['NI'], day)
+            #recover(node, state, p['rec'], p['rec']*p['H'][ageGroup[node]], p['NI'], day)
+            recoverTimed(node, state, p['H'][ageGroup[node]], p['NI'], 0.3, day)
             cont = True
         if state[node][0] == 'H':
-            hospital(node, state, p['rec'], p['rec']*p['D'][ageGroup[node]], day)
-            #hospitalTimed(node, state, p['D'][ageGroup[node]], day)
+            #hospital(node, state, p['rec'], p['rec']*p['D'][ageGroup[node]], day)
+            hospitalTimed(node, state, p['D'][ageGroup[node]], day)
             cont = True
+        if state[node][0] == 'ICU':
+            hospitalTimed(node, state, p['D'][ageGroup[node]], day)
     
     return cont, lInfs, dailyInfs
 
@@ -176,15 +237,23 @@ def countState(state, stateList):
         count[node[0]] += 1
     return count
 
+def genVector(layers):
+    vec = {}
+    for layer in layers:
+        vec[layer] = 1
+    return vec
 
 def convertVector(inputVector):
-    newVec = []
-    for i in range(4):
-        newVec.append(inputVector[0])
-    newVec.append(inputVector[1])
-    newVec.append(1)
-    newVec.append(inputVector[2])
-
+    newVec = {}
+    newVec = {}
+    for layer in inputVector:
+        if layer == 'S':
+            newVec['BH'] = inputVector[layer]
+            newVec['BS'] = inputVector[layer]
+            newVec['US'] = inputVector[layer]
+            newVec['VS'] = inputVector[layer]
+        else:
+            newVec[layer] = inputVector[layer]
     return newVec
 
 
@@ -192,15 +261,16 @@ def setStrategy(inputVector, probs, layers):
 
     newP = copy.deepcopy(probs)
     isOpen = {}
-    for i in range(len(inputVector)):
-        for layer in range(len(layers)):
+    for layer in inputVector:
+        isOpen[layer] = bool(inputVector[layer])
 
-            isOpen[layers[i]] = bool(inputVector[i])
-
+    isOpen['NH'] = True
+    isOpen['HH'] = True
     qFac = [0.1, 0.2, 0.5, 1]
     isOpen['R'] = True
+
     
-    newP['inf']['R'] = qFac[inputVector[-1]]*probs['inf']['R']
+    newP['inf']['R'] = qFac[inputVector['R']]*probs['inf']['R']
     
     return isOpen, newP
 
@@ -270,6 +340,7 @@ def findR(stateLog):
             return float(newInfs)/float(newRecs)
     return 0
 
+
 def analyticalR(cliques, openLayers, state, p):
     expInfs = [0]*len(state)
     for layer in cliques:
@@ -286,7 +357,39 @@ def analyticalR(cliques, openLayers, state, p):
         rByNode.append(node/p['rec'])
     return np.mean(rByNode)
 
+def genActivity(n, exp):
+    activity = {}
+    for node in range(n):
+        activity[n] = int(pow(1-random.random(), exp))
+    return activity
 
+
+def dynRandomLayer(state, act, layer, p):
+    for node in state:
+        if state[node] == 'I':
+            conns = random.randint(0, act[node])
+            newInfs = np.random.binomial(conns, p)
+            for nNode in random.sample(layer, newInfs):
+                state[nNode] == 'E'
+                
+        if state[node] == 'S':
+            conns = random.randint(0, act[node])
+            iNeighbors = 0
+            for nNode in random.sample(layer, conns):
+                if state[nNode] == 'I':
+                    iNeighbors += 1
+            if random.random() < 1-pow(1-p, iNeighbors):
+                state[node] == 'E'
+
+                
+
+def randomLayer(act, state, p, day):
+    for node in act:
+        n = random.randint(1, act[node])
+    clique = random.sample(state, n)
+    newInfs = cliqueDay(clique, state, p, day)
+    return newInfs
+    
 def genBlankState(n):
     state = []
     for i in range(n):
