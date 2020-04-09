@@ -5,7 +5,7 @@ import networkx as nx
 
 
 
-stateList = ['S', 'E', 'I', 'R', 'H', 'D']
+stateList = ['S', 'E', 'I', 'R', 'H', 'ICU', 'VT', 'D']
 
 def setRisk(ageFile, riskTableFile):
     riskTable = {}
@@ -28,6 +28,7 @@ def setRisk(ageFile, riskTableFile):
 def readModel(ageFile, cliqueFile):
     f = open(ageFile)
     ageGroup = []
+    ageNb = []
     nodeID = 0
     for line in f:
         prevID = nodeID
@@ -46,7 +47,7 @@ def readModel(ageFile, cliqueFile):
             ageGroup.append('E1')
         else:
             ageGroup.append('E2')
-        
+        ageNumber.append[age]
 
     f.close()
         
@@ -74,7 +75,7 @@ def readModel(ageFile, cliqueFile):
 
     f.close()
     cliques['R'] = [range(len(ageGroup))]
-    return layers, ageGroup, cliques
+    return layers, ageGroup, ageNb, cliques
 
 def genRandomClique(seq, ub):
     rs = pow(random.random(), 0.5)
@@ -83,7 +84,41 @@ def genRandomClique(seq, ub):
     return clique
 
 
-#Runs infections over a day 
+def filterCliqueAge(clique, age, cutoff, mode):
+    newClique = []
+    for node in clique:
+        if mode == 'highPass':
+            if age[node] > cutoff:
+                newClique.append(node)
+        if mode == 'lowPass':
+            if age[node] < cutoff:
+                newClique.append(node)
+    return newClique
+
+def filterCliqueRisk(clique, atRisk, mode):
+    newClique = []
+    for node in clique:
+        if mode == 'highPass':
+            if atRisk[node]:
+                newClique.append(node)
+        if mode == 'lowPass':
+            if not atRisk[node]:
+                newClique.append(node)
+    return newClique    
+
+def filterCliqueAttribute(clique, attrs, attrID, cutoff, mode):
+    newClique = []
+    for node in clique:
+        if mode == 'highPass':
+            if attribute[attrID] > cutoff:
+                newClique.append(node)
+        if mode == 'lowPass':
+            if attribute[attrID] < cutoff:
+                newClique.append(node)
+    return newClique
+
+#Runs infections over a day
+
 def cliqueDay(clique, state, p, day):
 
     susceptible = 0
@@ -124,34 +159,40 @@ def recover(node, state, pr, ph, pni, day):
         state[node] = ['S', day]
 
 #Recovery on predetermined time schedule
-def recoverTimed(node, state, ph, pni, day):
+def recoverTimed(node, state, ph, pni, picu, day):
 
     if state[node][2] == day:
         r = random.random()
         if r < ph:
-            state[node] = ['H', day, max(day+1, round(day+np.random.normal(10,3)))]
+            if random.random() < picu:
+                state[node] = ['H', day, max(day+1, round(day+np.random.normal(6,3))), 'ICU flag']
+            else:
+                state[node] = ['H', day, max(day+1, round(day+np.random.normal(8,3)))]
         elif r < ph+pni:
             state[node] = ['S', day]
         else:
             state[node] = ['R', day]
 
 #Hospitalized to dead or recovered
-def hospital(node, state, pr, pc, day):
+def hospital(node, state, pr, pc, picu day):
     r = random.random()
     if r < pr:
         state[node] = ['R', day]
     elif r < pr+pc:
         state[node] = ['D', day]
-
+        
 #Hospitalization on predetermined time schedule
 def hospitalTimed(node, state, pc, day):
     if state[node][2] == day:
         r = random.random()
+        if len(state[node] == 4]):
+            state[node] = ['ICU', day, max(day+1, round(day.np.random.normal(10,3)))]
         if r < pc:
             state[node] = ['D', day]
         else:
             state[node] = ['R', day]
 
+            
 def systemDay(cliques, state, ageGroup, openLayer, p, day):
 
     cont = 0
