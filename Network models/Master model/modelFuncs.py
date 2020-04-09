@@ -412,3 +412,6 @@ def genBlankState(n):
 def seedState(state, n):
     for node in random.sample(range(len(state)), n):
         state[node] = ['I', 0, random.randint(1, 10)]
+
+
+
