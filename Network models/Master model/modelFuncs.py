@@ -33,8 +33,8 @@ def readModel(ageFile, cliqueFile):
     for line in f:
         prevID = nodeID
         line = line.rstrip().split(';')
-        nodeID = float(line[0])
-        age = float(line[1])
+        nodeID = int(line[0])-1
+        age = int(line[1])
         
         attrs[nodeID] = {}
         attrs[nodeID]['age'] = age
@@ -77,7 +77,7 @@ def readModel(ageFile, cliqueFile):
             cliques[translations[splitLine[0]]].append(clique)
 
     f.close()
-    cliques['R'] = [range(len(ageGroup))]
+    cliques['R'] = [range(len(attrs))]
     return layers, attrs, cliques
 
 
@@ -157,7 +157,7 @@ def cliqueDay(clique, attrs, p, day):
 def incubate(node, attrs, p, day):
     r = random.random()
     if r < p:
-        attrs[node][state][0] = 'I'
+        attrs[node]['state'][0] = 'I'
         
 #Infectious to recovered, hospital, or back into susceptible
 def recover(node, attrs, pr, ph, pni, day):
@@ -193,7 +193,7 @@ def hospital(node, attrs, pr, pc, day):
         attrs[node]['state'] = ['D', day]
         
 #Hospitalization on predetermined time schedule
-def hospitalTimed(node, state, pc, day):
+def hospitalTimed(node, attrs, pc, day):
     if attrs[node]['state'][2] == day:
         r = random.random()
         if len(attrs[node]['state']) == 4:
@@ -222,25 +222,25 @@ def systemDay(cliques, attrs, openLayer, p, day):
                 
                            
         
-    for node in range(len(state)):
+    for node in range(len(attrs)):
         if attrs[node]['state'][0] == 'E':
-            incubate(node, state, p['inc'], day)
+            incubate(node, attrs, p['inc'], day)
             cont = True
         if attrs[node]['state'][0] == 'I':
             #recover(node, state, p['rec'], p['rec']*p['H'][ageGroup[node]], p['NI'], day)
-            recoverTimed(node, state, p['H'][ageGroup[node]], p['NI'], 0.3, day)
+            recoverTimed(node, attrs, p['H'][attrs[node]['ageGroup']], p['NI'], 0.3, day)
             cont = True
         if attrs[node]['state'][0] == 'H':
             #hospital(node, state, p['rec'], p['rec']*p['D'][ageGroup[node]], day)
-            hospitalTimed(node, state, p['D'][ageGroup[node]], day)
+            hospitalTimed(node, attrs, p['D'][attrs[node]['ageGroup']], day)
             cont = True
         if attrs[node]['state'][0] == 'ICU':
-            hospitalTimed(node, state, p['D'][ageGroup[node]], day)
+            hospitalTimed(node, attrs, p['D'][attrs[node]['ageGroup']], day)
     
     return cont, lInfs, dailyInfs
 
 
-def countState(state, stateList):
+def countState(attrs, stateList):
     count = {}
     for s in stateList:
         count[s] = 0
@@ -286,7 +286,7 @@ def setStrategy(inputVector, probs, layers):
     return isOpen, newP
 
 
-def fullRun(attrs, layers, cliques, strat, baseP):
+def fullRun(seedAttrs, layers, cliques, strat, baseP):
     
     cont = 1
     i = 0
@@ -296,7 +296,7 @@ def fullRun(attrs, layers, cliques, strat, baseP):
     stateLog = []
     infLog = []
     infLogByLayer = []
-    state = copy.copy(seedState)
+    attrs = copy.copy(seedAttrs)
     
     while cont:
         i+=1
@@ -306,7 +306,7 @@ def fullRun(attrs, layers, cliques, strat, baseP):
         dailyInfs = 0
     
         cont, linfs, dailyInfs = systemDay(cliques, attrs, openLayers, p, i)
-        stateLog.append(countState(state, stateList))
+        stateLog.append(countState(attrs, stateList))
         infLog.append(dailyInfs)
         infLogByLayer.append(linfs)
     
@@ -322,7 +322,7 @@ def fullRunControl(seedAttrs, layers, cliques, strat, baseP):
     stateLog = []
     infLog = []
     infLogByLayer = []
-    state = copy.copy(seedState)
+    attrs = copy.copy(seedAttrs)
     
     while cont:
         i+=1
@@ -331,8 +331,8 @@ def fullRunControl(seedAttrs, layers, cliques, strat, baseP):
 
         dailyInfs = 0
     
-        cont, linfs, dailyInfs = systemDay(cliques, state, ageGroup, openLayers, p, i)
-        stateLog.append(countState(state, stateList))
+        cont, linfs, dailyInfs = systemDay(cliques, attrs, openLayers, p, i)
+        stateLog.append(countState(attrs, stateList))
 
         infLog.append(dailyInfs)
         infLogByLayer.append(linfs)
@@ -352,8 +352,8 @@ def findR(stateLog):
     return 0
 
 
-def analyticalR(cliques, openLayers, state, p):
-    expInfs = [0]*len(state)
+def analyticalR(cliques, openLayers, attrs, p):
+    expInfs = [0]*len(attrs)
     for layer in cliques:
             
         if openLayers[layer]:
