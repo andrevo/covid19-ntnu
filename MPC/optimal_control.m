@@ -63,7 +63,7 @@ end
 F = Function('F', {X0, U}, {X, Q}, {'x0','u'}, {'xf', 'qf'});
 
 % Initial guess for u
-u_start = u_max*ones(1,N);
+u_start = u_0*ones(1,N);
 
 % Get a feasible trajectory as an initial guess
 xk = x_0;
@@ -144,9 +144,9 @@ J=J + term_cost(Xk);
 nlp = struct('f', J, 'x', vertcat(w{:}), 'g', vertcat(g{:}));
 
 opt = struct;
-opt.ipopt.print_level = 0;
+%opt.ipopt.print_level = 0;
 %opt.ipopt.sb = 'yes';
-opt.print_time = 0;
+%opt.print_time = 0;
 %opt.ipopt.warm_start_init_point = 'yes';
 solver = nlpsol('solver', 'ipopt', nlp, opt);
 
