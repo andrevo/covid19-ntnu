@@ -8,10 +8,10 @@ import networkx as nx
 stateList = ['S', 'E', 'I', 'R', 'H', 'ICU', 'VT', 'D']
 
 #Initialize full model
-def initModel(ageFile, cliqueFile, riskTableFile, baseP, exp, n):
+def initModel(ageFile, cliqueFile, riskTableFile, baseP, dynParams, n):
     layers, attrs, cliques = readModel(ageFile, cliqueFile)
     #setRisk(ageFile, riskTableFile, attrs)
-    genActivity(attrs, exp)
+    genActivity(attrs, dynParams)
 
     
     genBlankState(attrs)
@@ -388,9 +388,12 @@ def analyticalR(cliques, openLayers, attrs, p):
 
 
 #Generate activity for a set of nodes, according to power law
-def genActivity(attrs, exp):
+def genActivity(attrs, dynParams):
+    mode = dynParams[0]
+    var = dynParams[1]
+    exp = dynParams[2]
     for node in range(len(attrs)):
-        attrs[node]['act'] = int(pow(random.random(), exp))
+        attrs[node]['act'] = int(max(np.random.normal(mode, var), 1) + pow(random.random(), exp))
 
 
 #Generate random cliques according to power law

@@ -2,7 +2,7 @@ from modelFuncs import *
 from InitializeProbability import *
 
 #layers, attrs, cliques = readModel('idAndAge_Oslo.txt', 'socialNetwork_Oslo.txt')
-layers, attrs, cliques = initModel('idAndAge_Oslo.txt', 'socialNetwork_Oslo.txt', '', baseP, -1/2, 20)
+layers, attrs, cliques = initModel('idAndAge_Oslo.txt', 'socialNetwork_Oslo.txt', '', baseP, [10, 3, -1], 20)
 #genBlankState(attrs)
 #seedState(attrs, 20)
 
