@@ -237,7 +237,7 @@ def systemDay(cliques, attrs, openLayer, p, day):
                 lInfs[layer] += len(infs)
                 dailyInfs += len(infs)
         
-    lInfs['Rp'] = dynRandomLayer(attrs, cliques['R'][0], 0.01, day)
+    lInfs['Rp'] = dynRandomLayer(attrs, cliques['R'][0], p['inf']['dynR'], day)
                 
         
     for node in range(len(attrs)):
