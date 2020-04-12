@@ -7,10 +7,19 @@ import networkx as nx
 
 stateList = ['S', 'E', 'I', 'R', 'H', 'ICU', 'VT', 'D']
 
+#Initialize full model
+def initModel(ageFile, cliqueFile, riskTableFile, baseP, exp, n):
+    layers, attrs, cliques = readModel(ageFile, cliqueFile)
+    #setRisk(ageFile, riskTableFile, attrs)
+    genActivity(attrs, exp)
 
+    
+    genBlankState(attrs)
+    seedState(attrs, n)
 
+    return layers, attrs, cliques
+    
 #Sets binary risk from file
-
 
 def setRisk(ageFile, riskTableFile, attrs):
     riskTable = {}
@@ -31,14 +40,12 @@ def setRisk(ageFile, riskTableFile, attrs):
             attrs[splitLine[1]]['atRisk'] = False
 
 
-    return atRisk
-
             
 #Builds household/school/work structure from file
 def readModel(ageFile, cliqueFile):
 
     f = open(ageFile)
-    nodeID = 0
+    nodeID = -1
     attrs = {}
     
     for line in f:
@@ -50,7 +57,7 @@ def readModel(ageFile, cliqueFile):
         attrs[nodeID] = {}
         attrs[nodeID]['age'] = age
         if (nodeID-prevID) != 1:
-            print ('Out of sequence IDs')
+            print ('Out of sequence IDs'), nodeID, prevID
         if age < 19:
             attrs[nodeID]['ageGroup'] = 'B'
         elif age < 55:
@@ -96,11 +103,7 @@ def readModel(ageFile, cliqueFile):
 
 
 
-def genRandomClique(seq, ub):
-    rs = pow(random.random(), 0.5)
-    cSize = min(1+int(1/rs), len(seq), ub)
-    clique = random.sample(seq, cSize)
-    return clique
+
 
 
 
@@ -183,7 +186,7 @@ def recover(node, attrs, pr, ph, pni, day):
 
 #Recovery on predetermined time schedule
 def recoverTimed(node, attrs, ph, pni, picu, day):
-
+    
     if attrs[node]['state'][2] == day:
         r = random.random()
         if r < ph:
@@ -227,14 +230,15 @@ def systemDay(cliques, attrs, openLayer, p, day):
     for layer in cliques:
         lInfs[layer] = 0
 
-        if openLayer[layer]: #i > rel[layer]:
+        if (openLayer[layer] & (layer != 'R')): #i > rel[layer]:
             for clique in cliques[layer]:
                 infs = cliqueDay(clique, attrs, p['inf'][layer], day)
                 #print infs
                 lInfs[layer] += len(infs)
                 dailyInfs += len(infs)
+        
+    lInfs['Rp'] = dynRandomLayer(attrs, cliques['R'][0], 0.01, day)
                 
-                           
         
     for node in range(len(attrs)):
         if attrs[node]['state'][0] == 'E':
@@ -382,20 +386,43 @@ def analyticalR(cliques, openLayers, attrs, p):
         rByNode.append(node/p['rec'])
     return np.mean(rByNode)
 
-def genActivity(n, exp):
-    activity = {}
-    for node in range(n):
-        activity[node] = int(pow(1-random.random(), exp))
-    return activity
+
+#Generate activity for a set of nodes, according to power law
+def genActivity(attrs, exp):
+    for node in range(len(attrs)):
+        attrs[node]['act'] = int(pow(random.random(), exp))
 
 
-def dynRandomLayer(attrs, layer, p, day):
+#Generate random cliques according to power law
+def genRandomClique(seq, ub):
+    rs = pow(random.random(), 0.5)
+    cSize = min(1+int(1/rs), len(seq), ub)
+    clique = random.sample(seq, cSize)
+    return clique
+
+#Generate random cliques centered around nodes and infects them
+def randomLayer(attrs, p, day):
     for node in attrs:
+        n = random.randint(1, attrs[node]['act'])
+    clique = random.sample(attrs, n)
+    newInfs = cliqueDay(clique, attrs, p, day)
+    return newInfs
+
+
+#Node-based power law spread on a random layer
+def dynRandomLayer(attrs, layer, p, day):
+    infs = 0
+    for node in layer:
         if attrs[node]['state'][0] == 'I':
-            conns = random.randint(0, attrs[node]['act'])
-            newInfs = np.random.binomial(conns, p)
-            for nNode in random.sample(layer, newInfs):
-                attrs[nNode]['state'] == ['E', day]
+            conns = min(random.randint(0, attrs[node]['act']), len(layer))
+            for nNode in random.sample(layer, conns):
+                #print node, nNode, attrs[nNode]['state']
+                if attrs[nNode]['state'][0] == 'S':
+                    if random.random() < p:
+                        attrs[nNode]['state'] = ['E', day, max(day+1, round(day+np.random.normal(10, 3)))]
+                                            
+                        infs += 1
+                #print node, nNode, attrs[nNode]['state']
                 
         if attrs[node]['state'] == 'S':
             conns = random.randint(0, attrs[node]['act'])
@@ -404,17 +431,15 @@ def dynRandomLayer(attrs, layer, p, day):
                 if attrs[nNode]['state'][0] == 'I':
                     iNeighbors += 1
             if random.random() < 1-pow(1-p, iNeighbors):
-                attrs[node]['state'] == 'E'
+                if random.random() < p:
+                    attrs[node]['state'] = ['E', day, max(day+1, round(day+np.random.normal(10, 3)))]
+                    infs += 1
 
-                
 
-def randomLayer(act, attrs, p, day):
-    for node in act:
-        n = random.randint(1, act[node])
-    clique = random.sample(attrs, n)
-    newInfs = cliqueDay(clique, attrs, p, day)
-    return newInfs
-    
+    return infs
+
+
+
 def genBlankState(attrs):
     for node in attrs:
         attrs[node]['state'] = ['S', 0]
