@@ -5,7 +5,8 @@ import networkx as nx
 
 
 
-stateList = ['S', 'E', 'I', 'R', 'H', 'ICU', 'VT', 'D']
+stateList = ['S', 'E', 'I', 'R', 'H', 'ICU', 'D']
+
 
 #Initialize full model
 def initModel(ageFile, cliqueFile, riskTableFile, baseP, dynParams, n):
@@ -137,10 +138,10 @@ def filterCliqueAttribute(clique, attrs, attrID, cutoff, mode):
     newClique = []
     for node in clique:
         if mode == 'highPass':
-            if attribute[attrID] > cutoff:
+            if attrs[node][attrID] > cutoff:
                 newClique.append(node)
         if mode == 'lowPass':
-            if attribute[attrID] < cutoff:
+            if attrs[node][attrID] < cutoff:
                 newClique.append(node)
     return newClique
 
@@ -330,6 +331,35 @@ def fullRun(seedAttrs, layers, cliques, strat, baseP):
     
     return stateLog, infLog, infLogByLayer, i
 
+def timedRun(attrs, layers, cliques, strat, baseP, curDay, runDays):
+    
+    cont = 1
+    i = curDay
+    inVec = convertVector(strat)
+    openLayers, p = setStrategy(inVec, baseP, layers)
+
+    stateLog = []
+    infLog = []
+    infLogByLayer = []
+    endDay = curDay+runDays
+    
+    while i < endDay:
+        i+=1
+        if i%10 == 0:
+            print i
+
+        dailyInfs = 0
+    
+        cont, linfs, dailyInfs = systemDay(cliques, attrs, openLayers, p, i)
+
+        stateLog.append(countState(attrs, stateList))
+        infLog.append(dailyInfs)
+        infLogByLayer.append(linfs)
+    
+    return stateLog, infLog, infLogByLayer, i
+
+
+
 def fullRunControl(seedAttrs, layers, cliques, strat, baseP):
     
     cont = 1
@@ -392,8 +422,12 @@ def genActivity(attrs, dynParams):
     mode = dynParams[0]
     var = dynParams[1]
     exp = dynParams[2]
-    for node in range(len(attrs)):
-        attrs[node]['act'] = int(max(np.random.normal(mode, var), 1) + pow(random.random(), exp))
+    for node in attrs:
+        if (attrs[node]['age'] < 70) & (attrs[node]['age'] > 18):
+            attrs[node]['act'] = int(max(np.random.normal(mode, var), 1) + pow(random.random(), exp))
+        else:
+            
+            attrs[node]['act'] = int(max(np.random.normal(mode, var), 1))
 
 
 #Generate random cliques according to power law
