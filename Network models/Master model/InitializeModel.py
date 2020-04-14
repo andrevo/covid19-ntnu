@@ -1,4 +1,5 @@
 import random
+from modelFuncs import *
 
 stateList = ['S', 'E', 'I', 'R', 'H', 'D']
 
@@ -21,10 +22,17 @@ cliques = {}
 for layer in layers:
     cliques[layer] = []
 
-state = []
+
+
+attrs = {}
+for node in seq:
+    attrs[node] = {}
+
 for node in range(nNodes):
-    state.append(['S', 0])
-ageGroup = [0]*nNodes
+    attrs[node]['state']= ['S', 0]
+    
+    attrs[node]['ageGroup'] = 0
+    
 adults = [] #IDs of adults
 children = [] #IDs of children
 elderly = [] #IDs of elderly
@@ -80,22 +88,22 @@ while(i < nNodes):
 
         if fs > 2:
             if ar < 0.2:
-                ageGroup[seq[j]] = 'A2'
+                attrs[seq[j]]['ageGroup'] = 'A2'
             else:
-                ageGroup[seq[j]] = 'A1'
+                attrs[seq[j]]['ageGroup'] = 'A1'
             adults.append(seq[j])
         else:
             if ar < 0.3:
-                ageGroup[seq[j]] = 'A1'
+                attrs[seq[j]]['ageGroup'] = 'A1'
                 adults.append(seq[j])
             elif ar < 0.6:
-                ageGroup[seq[j]] = 'A2'
+                attrs[seq[j]]['ageGroup'] = 'A2'
                 adults.append(seq[j])
             elif ar < 0.9:
-                ageGroup[seq[j]] = 'E1'
+                attrs[seq[j]]['ageGroup'] = 'E1'
                 elderly.append(seq[j])
             else:
-                ageGroup[seq[j]] = 'E2'
+                attrs[seq[j]]['ageGroup'] = 'E2'
                 elderly.append(seq[j])
 
         
@@ -108,22 +116,22 @@ while(i < nNodes):
         for j in range(i+2, t):
             year = random.randint(0, 23)
             if year < 6:
-                ageGroup[seq[j]] = 'B'
+                attrs[seq[j]]['ageGroup'] = 'B'
                 
                 cliques['BH'][fBh].append(seq[j])
             if  (year < 13):
-                ageGroup[seq[j]] = 'B'
+                attrs[seq[j]]['ageGroup'] = 'B'
                 cliques['BS'][fBs].append(seq[j])
             elif year < 16:
-                ageGroup[seq[j]] = 'B'
+                attrs[seq[j]]['ageGroup'] = 'B'
                 cliques['US'][fUs].append(seq[j])
 
             elif year < 19:
-                ageGroup[seq[j]] = 'B'
+                attrs[seq[j]]['ageGroup'] = 'B'
                 cliques['VS'][random.randint(0, n['VS']-1)].append(seq[j])
 
             else:
-                ageGroup[seq[j]] = 'A1'
+                attrs[seq[j]]['ageGroup'] = 'A1'
 
             if year < 19:
                 children.append(seq[j])
@@ -141,7 +149,7 @@ print "Households and schools created"
 
 #Count number of people by age group
 for node in seq:
-    ageLists[ageGroup[node]].append(node)
+    ageLists[attrs[node]['ageGroup']].append(node)
 
 
 #Work assignment
@@ -175,17 +183,17 @@ cliques['R'].append(seq)
 i0 = 20
 #Initial infection
 for i in range(i0):
-    state[seq[i]][0] = 'I'
+    attrs[seq[i]]['state'] = ['I', 0, random.randint(1, 10)]
 
 
 
 #"Vaccination"
 for node in seq:
-    if ageGroup[node] in ['B', 'A1', 'A2']:
+    if attrs[node]['ageGroup'] in ['B', 'A1', 'A2']:
         if random.random() < 0:
-            state[node][0] = 'R'
+            attrs[node]['state'] = 'R'
 
 
 
-
+genActivity(attrs, [10, 3, -.75])
 

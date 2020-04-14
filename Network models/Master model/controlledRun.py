@@ -77,7 +77,7 @@ while cont:
     strat = strats[int(round(u))]
     inVec = convertVector(strat)
     openLayers, p = setStrategy(inVec, baseP, layers)
-    cont, linfs, dailyInfs = systemDay(cliques, state, ageGroup, openLayers, p, i)
+    cont, linfs, dailyInfs = systemDay(cliques, attrs, openLayers, p, i)
     stateLog.append(countState(state, stateList))
     infLog.append(dailyInfs)
     infLogByLayer.append(linfs)
