@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 import matlab.engine
 from InitializeModel import *
+from InitializeProbability import *
 from modelFuncs import *
 
 
@@ -53,8 +54,8 @@ eng.workspace['u_prev'] = 0.0
 # Run MPC step function
 u = eng.eval('step_nmpc(x,u_prev,dt_u,model,objective,opt);')
 
-state = genBlankState(2*pow(10, 5))
-seedState(state, 20)
+
+seedState(attrs, 20)
 
 
 cont = 1
@@ -65,8 +66,8 @@ infLog = []
 infLogByLayer = []
 #state = copy.copy(seedState)
 
-strats = [[0, 0, 1], [0, 1, 1], [0, 1, 2], [1, 1, 2], [1, 1, 3]] #Workplaces first
-strats = [[0, 0, 1], [1, 0, 1], [1, 0, 2], [1, 1, 2], [1, 1, 3]] #Schools
+strats = [{'S': 0, 'W': 0, 'R': 1}, {'S':0, 'W':1, 'R':1}, {'S':0, 'W':1, 'R':2}, {'S':1, 'W':1, 'R':2}, {'S':1, 'W':1, 'R':3}] #Workplaces first
+strats = [{'S':0, 'W':0, 'R':1}, {'S':1, 'W':0, 'R':1}, {'S':1, 'W':0, 'R':2}, {'S':1, 'W':1, 'R':2}, {'S':1, 'W':1, 'R':3}] #Schools
 uhist = []
 
 while cont:
@@ -78,10 +79,10 @@ while cont:
     inVec = convertVector(strat)
     openLayers, p = setStrategy(inVec, baseP, layers)
     cont, linfs, dailyInfs = systemDay(cliques, attrs, openLayers, p, i)
-    stateLog.append(countState(state, stateList))
+    stateLog.append(countState(attrs, stateList))
     infLog.append(dailyInfs)
     infLogByLayer.append(linfs)
-    count = countState(state, stateList)
+    count = countState(attrs, stateList)
     n = 2*pow(10, 5)
     I = float(count['I'])/n
     S = float(count['S'])/n
