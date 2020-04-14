@@ -21,13 +21,18 @@ for layer in layers:
 for layer in ['NH', 'HH', 'BH', 'R']:
     controlCliques[layer] = copy.deepcopy(cliques[layer])
 
-
 for layer in ['BS', 'US', 'VS']:
     for clique in cliques[layer]:
-        controlCliques[layer].append(filterCliqueAttribute(clique, attrs, 'age', 10, 'lowPass'))
+        controlCliques[layer].append(filterCliqueAttribute(clique, attrs, 'age', 0, 'lowPass'))
 
 for clique in cliques['W']:
     if random.random() < 0.5:
         controlCliques['W'].append(copy.copy(clique))
 
-stateLogC, infLogC, infLogByLayerC, i = timedRun(attrs, layers, controlCliques, strat, baseP, 20, 60)
+controlAttrs = copy.deepcopy(attrs)
+for node in attrs:
+    controlAttrs[node]['act'] = min(attrs[node]['act'], 5)
+
+
+stateLogC, infLogC, infLogByLayerC, i = timedRun(controlAttrs, layers, controlCliques, strat, baseP, 20, 60)
+

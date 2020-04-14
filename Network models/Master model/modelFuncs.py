@@ -423,7 +423,7 @@ def genActivity(attrs, dynParams):
     var = dynParams[1]
     exp = dynParams[2]
     for node in attrs:
-        if (attrs[node]['age'] < 70) & (attrs[node]['age'] > 18):
+        if (attrs[node]['ageGroup'] in ['A1', 'A2', 'E1']):
             attrs[node]['act'] = int(max(np.random.normal(mode, var), 1) + pow(random.random(), exp))
         else:
             

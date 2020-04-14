@@ -11,3 +11,4 @@ inVec = convertVector(strat)
 
 stateLog, infLog, infLogByLayer, i, = fullRun(attrs, layers, cliques, strat, baseP)
 
+
