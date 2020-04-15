@@ -146,24 +146,34 @@ def filterCliqueAttribute(clique, attrs, attrID, cutoff, mode):
     return newClique
 
 
+def infectNode(attrs, node, anc, day):
+    attrs[node]['state'] = ['E', day, max(day+1, round(day+np.random.normal(10, 3)))]
+    attrs[node]['infAnc'] = anc
+    attrs[anc]['infDesc'].append(node)
+
 #Runs infections over a day
 def cliqueDay(clique, attrs, p, day):
 
     susceptible = 0
     infected = 0
+    infClique = []
     susClique = []
+    
     for node in clique:
         if attrs[node]['state'][0] == 'S':
             susClique.append(node)
         if attrs[node]['state'][0] == 'I':
-            infected += 1
+            infClique.append(node)
+    infected = len(infClique)
     susceptible = len(susClique)
     effP = 1-pow(1-p, infected)
 
     newInfs = random.sample(susClique, np.random.binomial(susceptible, effP))
     for nb in newInfs:
         attrs[nb]['state'] = ['E', day, max(day+1, round(day+np.random.normal(10, 3)))]
-
+        ancestor = random.choice(infClique)
+        attrs[nb]['infAnc'] = ancestor
+        attrs[ancestor]['infDesc'].append(nb)
         
     return newInfs
 
@@ -457,7 +467,8 @@ def dynRandomLayer(attrs, layer, p, day):
                 if attrs[nNode]['state'][0] == 'S':
                     if random.random() < p:
                         attrs[nNode]['state'] = ['E', day, max(day+1, round(day+np.random.normal(10, 3)))]
-                                            
+                        attrs[nNode]['infAnc'] = node
+                        attrs[node]['infDesc'].append(nNode)
                         infs += 1
                 #print node, nNode, attrs[nNode]['state']
                 
@@ -470,6 +481,8 @@ def dynRandomLayer(attrs, layer, p, day):
             if random.random() < 1-pow(1-p, iNeighbors):
                 if random.random() < p:
                     attrs[node]['state'] = ['E', day, max(day+1, round(day+np.random.normal(10, 3)))]
+                    attrs[node]['infAnc'] = nNode
+                    attrs[nNode]['infDesc'].append(node)
                     infs += 1
 
 
@@ -480,7 +493,8 @@ def dynRandomLayer(attrs, layer, p, day):
 def genBlankState(attrs):
     for node in attrs:
         attrs[node]['state'] = ['S', 0]
-        
+        attrs[node]['infAnc'] = -1
+        attrs[node]['infDesc'] = []
 
 def seedState(attrs, n):
     for node in random.sample(attrs.keys(), n):
