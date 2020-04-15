@@ -146,13 +146,13 @@ def filterCliqueAttribute(clique, attrs, attrID, cutoff, mode):
     return newClique
 
 
-def infectNode(attrs, node, anc, day):
+def infectNode(attrs, node, anc, layer, day):
     attrs[node]['state'] = ['E', day, max(day+1, round(day+np.random.normal(10, 3)))]
-    attrs[node]['infAnc'] = anc
-    attrs[anc]['infDesc'].append(node)
+    attrs[node]['infAnc'] = [anc, layer]
+    attrs[anc]['infDesc'].append([node, layer])
 
 #Runs infections over a day
-def cliqueDay(clique, attrs, p, day):
+def cliqueDay(clique, attrs, layer, p, day):
 
     susceptible = 0
     infected = 0
@@ -170,10 +170,8 @@ def cliqueDay(clique, attrs, p, day):
 
     newInfs = random.sample(susClique, np.random.binomial(susceptible, effP))
     for nb in newInfs:
-        attrs[nb]['state'] = ['E', day, max(day+1, round(day+np.random.normal(10, 3)))]
         ancestor = random.choice(infClique)
-        attrs[nb]['infAnc'] = ancestor
-        attrs[ancestor]['infDesc'].append(nb)
+        infectNode(attrs, nb, ancestor, layer, day)
         
     return newInfs
 
@@ -243,7 +241,7 @@ def systemDay(cliques, attrs, openLayer, p, day):
 
         if (openLayer[layer] & (layer != 'R')): #i > rel[layer]:
             for clique in cliques[layer]:
-                infs = cliqueDay(clique, attrs, p['inf'][layer], day)
+                infs = cliqueDay(clique, attrs, layer, p['inf'][layer], day)
                 #print infs
                 lInfs[layer] += len(infs)
                 dailyInfs += len(infs)
@@ -452,7 +450,7 @@ def randomLayer(attrs, p, day):
     for node in attrs:
         n = random.randint(1, attrs[node]['act'])
     clique = random.sample(attrs, n)
-    newInfs = cliqueDay(clique, attrs, p, day)
+    newInfs = cliqueDay(clique, attrs, 'R', p, day)
     return newInfs
 
 
@@ -466,9 +464,7 @@ def dynRandomLayer(attrs, layer, p, day):
                 #print node, nNode, attrs[nNode]['state']
                 if attrs[nNode]['state'][0] == 'S':
                     if random.random() < p:
-                        attrs[nNode]['state'] = ['E', day, max(day+1, round(day+np.random.normal(10, 3)))]
-                        attrs[nNode]['infAnc'] = node
-                        attrs[node]['infDesc'].append(nNode)
+                        infectNode(attrs, nNode, node, 'dynR', day)
                         infs += 1
                 #print node, nNode, attrs[nNode]['state']
                 
@@ -480,9 +476,7 @@ def dynRandomLayer(attrs, layer, p, day):
                     iNeighbors += 1
             if random.random() < 1-pow(1-p, iNeighbors):
                 if random.random() < p:
-                    attrs[node]['state'] = ['E', day, max(day+1, round(day+np.random.normal(10, 3)))]
-                    attrs[node]['infAnc'] = nNode
-                    attrs[nNode]['infDesc'].append(node)
+                    infectNode(attrs, node, nNode, 'dynR', day)
                     infs += 1
 
 
