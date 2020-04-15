@@ -74,6 +74,8 @@ def readModel(ageFile, cliqueFile):
 
     f.close()
 
+    for node in attrs:
+        attrs[node]['cliques'] = []
 
     layers = ['BH', 'BS', 'US', 'VS', 'W', 'HH', 'NH', 'R']
     translations = {'Kindergarten': 'BH', 'PrimarySchool': 'BS', 'Household':'HH', 'SecondarySchool': 'US', 'UpperSecondarySchool': 'VS', 'Workplace': 'W', 'NursingHome':'NH'}
@@ -94,8 +96,11 @@ def readModel(ageFile, cliqueFile):
             clique = []
             for i in splitLine[1:]:
                 clique.append(int(i)-1)
-            
-            cliques[translations[splitLine[0]]].append(clique)
+                
+            cName = translations[splitLine[0]]
+            cliques[cName].append(clique)
+            for node in clique:
+                attrs[node]['cliques'].append([cName, len(cliques[cName])-1])
 
     f.close()
     cliques['R'] = [range(len(attrs))]
@@ -425,6 +430,19 @@ def analyticalR(cliques, openLayers, attrs, p):
     return np.mean(rByNode)
 
 
+def directR(attrs):
+    ageGroups = ['B', 'A1', 'A2', 'E1', 'E2']
+    infs = {}
+    for grp in ageGroups:
+        infs[grp] = 0
+        
+    for node in attrs:
+        if attrs[node]['state'][0] == 'R':
+            infs[attrs[node]['ageGroup']] += len(attrs[node]['infDesc'])
+
+    return infs
+    
+
 #Generate activity for a set of nodes, according to power law
 def genActivity(attrs, dynParams):
     mode = dynParams[0]
@@ -436,6 +454,8 @@ def genActivity(attrs, dynParams):
         else:
             
             attrs[node]['act'] = int(max(np.random.normal(mode, var), 1))
+
+
 
 
 #Generate random cliques according to power law
