@@ -668,10 +668,15 @@ def generateSocialNetworkForRegion(municipalityToGet):
     #generating workforce
     workforce = []
     for i in range(len(peopleAgeList)):
+        personID = peopleAgeList[i][0]
+        personAge = peopleAgeList[i][1]
         for j in range(len(workAgeProbability)):
-            if peopleAgeList[i][0]>=workAgeProbability[j][0] and peopleAgeList[i][1]<=workAgeProbability[j][1]:
-                if random.randint(0,10)<workAgeProbability[j][2]*10:
-                    workforce.append(peopleAgeList[i][0])
+            ageIntervalLowerBound = workAgeProbability[j][0]
+            ageIntervalUpperBound = workAgeProbability[j][1]
+            ageIntervalWorkingProbability = workAgeProbability[j][2]
+            if personAge>=ageIntervalLowerBound and personAge<=ageIntervalUpperBound:
+                if random.randint(0,100)<ageIntervalWorkingProbability*100:
+                    workforce.append(personID)
     random.shuffle(workforce)
 
     #assigning people to workplaces
@@ -820,12 +825,12 @@ def generateSocialNetworkForRegion(municipalityToGet):
 
     #TODO:
     #   Add hospitals
+    #   Add workers in schools, kindergartens, nursing homes, hospitals
     #   School data missing for some municipalities due to outdated municipality names
     #       - Kommune (Legacy): https://data-nxr-fellestjeneste.udir.no/swagger/ui/index
     #   More data on kindergartens
     #       - https://data-nbr.udir.no/swagger/ui/index
     #   Add sanity checks (demographic distribution vs original data, etc)
-    #   Add workers in schools, kindergartens, nursing homes
     #   Find and implement better data for compositions of couples, families, sibling flocks etc.
     #   Find and implement better data for employment rates for age groups etc.
     #   Find better school data? (replace 4.5 hack) https://www.udir.no/tall-og-forskning/statistikk/statistikk-videregaende-skole/elevtall-i-videregaende-skole/elevtall-fylker-og-skoler/
