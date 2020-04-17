@@ -21,7 +21,8 @@ eng.addpath(r'C:/Users/emcoates/covid19-ntnu/MPC/models', nargout=0)
 N = 200000.0
 eng.workspace['N'] = N
 # Max ICU capacity [num individuals]
-eng.workspace['ICU_max'] = 50.0
+ICU_max = 50.0
+eng.workspace['ICU_max'] = ICU_max
 
 eng.eval('param.alpha_I = 0.11;', nargout=0)
 eng.eval('param.alpha_H = 0.15;', nargout=0)
@@ -80,8 +81,13 @@ strats = [{'S': 0, 'W': 0, 'R': 1}, {'S':0, 'W':1, 'R':1}, {'S':0, 'W':1, 'R':2}
 strats = [{'S':0, 'W':0, 'R':1}, {'S':1, 'W':0, 'R':1}, {'S':1, 'W':0, 'R':2}, {'S':1, 'W':1, 'R':2}, {'S':1, 'W':1, 'R':3}] #Schools
 uhist = []
 ICU_hist = []
+d_est_out = []
 
-simDays = 3
+simDays = 1000
+
+# Disturbance estimate (integral action)
+d_est = 0.0
+k_I = 25.0
 
 while (i <= simDays) and cont:
     # Extract current state for control and plotting
@@ -97,9 +103,16 @@ while (i <= simDays) and cont:
         eng.workspace['u_prev'] = u
         x = matlab.double([[S], [I], [H]])
         eng.workspace['x'] = x
+        eng.workspace['d_est'] = d_est
+        eng.eval('model.dyn_fun = @(x,u) dynamics_SIH_d(x,u,d_est,param,model.beta_fun);', nargout=0)
         u = eng.eval('step_nmpc(x,u_prev,dt_u,model,objective,opt);')
         print i, u
         print count
+        print d_est
+
+        e_y = k_icu*H - 0.9*ICU_max/N
+        d_est += k_I*e_y
+        d_est_out.append(d_est)
 
     uhist.append(u)
     ICU_hist.append(k_icu * H * N)
@@ -117,11 +130,14 @@ while (i <= simDays) and cont:
 
 # Plotting
 plt.figure()
-plt.subplot(211)
+plt.subplot(311)
 plt.plot(ICU_hist)
 plt.ylabel('ICU')
-plt.subplot(212)
+plt.subplot(312)
 plt.plot(uhist)
 plt.ylabel('u')
+plt.subplot(313)
+plt.plot(d_est_out)
+plt.ylabel('dest')
 plt.xlabel('days')
 plt.show()
