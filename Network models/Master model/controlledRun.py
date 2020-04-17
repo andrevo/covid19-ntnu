@@ -6,57 +6,67 @@ from modelFuncs import *
 
 
 eng = matlab.engine.start_matlab()
-eng.addpath(r'~/CASADI/')
-eng.addpath(r'~/Documents/Covid/MPC/models')
-eng.addpath(r'~/Documents/Covid/MPC',nargout=0)
+#eng.addpath(r'~/CASADI/')
+#eng.addpath(r'~/Documents/Covid/MPC/models')
+#eng.addpath(r'~/Documents/Covid/MPC',nargout=0)
+eng.addpath(r'C:\Users\emcoates\CasADi\casadi-windows-matlabR2016a-v3.4.5')
+eng.addpath(r'C:/Users/emcoates/covid19-ntnu/MPC', nargout=0)
+eng.addpath(r'C:/Users/emcoates/covid19-ntnu/MPC/models', nargout=0)
 
-# states: [p^R p^I]^T
+
+# states: [p^S p^I p^H]^T
 # time units: days
 
 # Population size
 N = 200000.0
 eng.workspace['N'] = N
 # Max ICU capacity [num individuals]
-eng.workspace['ICU_max'] = 100.0
-# Recovery rate [1/days]
-eng.workspace['alpha'] = 0.1
+eng.workspace['ICU_max'] = 50.0
 
-# Fraction of infected that need ICU
-eng.workspace['k_icu'] = 0.02
+eng.eval('param.alpha_I = 0.11;', nargout=0)
+eng.eval('param.alpha_H = 0.15;', nargout=0)
+eng.eval('param.xi = 0.003;', nargout=0)
+eng.eval('param.mu = 0.0;', nargout=0)
+
+# Fraction of hospitalized that need ICU
+k_icu = 1.0 / 3.0
+eng.workspace['k_icu'] = k_icu
 # Number of discrete control combinations
 n_control = 5.0
 eng.workspace['n_control'] = n_control
 # Resulting beta values for each control combination (sorted in increasing order)
 #eng.workspace['control_list'] = matlab.double([.01, .06, .09, .133, .183]) #Analytical numbers, workplaces first
+#eng.workspace['control_list'] = matlab.double([.01, .062, .092, .133, .183]) #Analytical numbers, schools first
 
-eng.workspace['control_list'] = matlab.double([.01, .062, .092, .133, .183]) #Analytical numbers, schools first
-
+# Identified through model fitting:
+eng.workspace['control_list'] = matlab.double([0.1017, 0.1504, 0.1868, 0.2648, 0.3112])
 
 #eng.workspace['control_list'] = matlab.double([.1825, .210, .233, .254, .280]) #Empirical numbers
 
 #eng.workspace['control_list'] = matlab.double([0.01, 0.09, 0.12, 0.17, 0.23])
 
 # Run init script
-eng.init_SIR_1(nargout=0)
+eng.eval('use_beta = 0;', nargout=0)
+eng.init_SIH_1(nargout=0)
+eng.eval('opt.horizon = 50;', nargout=0)
+eng.eval('opt.integer = 0;', nargout=0)
 
 # Sample time for discretization [days]
-eng.workspace['dt_u'] = 10.0
+dt_u = 10.0
+eng.workspace['dt_u'] = dt_u
 
 # State [fraction of total population]
-I_0 = 1.0 # Num individuals
-p_I_0 = I_0/N
-p_R_0 = 0.0
+p_S_0 = (N - 20.0) / N
+p_I_0 = 20.0 / N
+p_H_0 = 0.0
 
-x = matlab.double([[p_R_0],[p_I_0]])
+x = matlab.double([[p_S_0], [p_I_0], [p_H_0]])
 eng.workspace['x'] = x
-eng.workspace['u_prev'] = 0.0
-
-# Run MPC step function
-u = eng.eval('step_nmpc(x,u_prev,dt_u,model,objective,opt);')
+u = 0.0  # assume no control at start
+eng.workspace['u_prev'] = u
 
 
 seedState(attrs, 20)
-
 
 cont = 1
 i = 0
@@ -69,12 +79,33 @@ infLogByLayer = []
 strats = [{'S': 0, 'W': 0, 'R': 1}, {'S':0, 'W':1, 'R':1}, {'S':0, 'W':1, 'R':2}, {'S':1, 'W':1, 'R':2}, {'S':1, 'W':1, 'R':3}] #Workplaces first
 strats = [{'S':0, 'W':0, 'R':1}, {'S':1, 'W':0, 'R':1}, {'S':1, 'W':0, 'R':2}, {'S':1, 'W':1, 'R':2}, {'S':1, 'W':1, 'R':3}] #Schools
 uhist = []
+ICU_hist = []
 
-while cont:
-    i+= 1
-    
-    if i%10 == 0:
+simDays = 3
+
+while (i <= simDays) and cont:
+    # Extract current state for control and plotting
+    count = countState(attrs, stateList)
+    S = float(count['S']) / N
+    I = float(count['I']) / N
+    H = float(count['H']) / N
+    R = float(count['R']) / N
+    D = float(count['D']) / N
+
+    # Calculate next control
+    if (i % dt_u == 0):
+        eng.workspace['u_prev'] = u
+        x = matlab.double([[S], [I], [H]])
+        eng.workspace['x'] = x
+        u = eng.eval('step_nmpc(x,u_prev,dt_u,model,objective,opt);')
         print i, u
+        print count
+
+    uhist.append(u)
+    ICU_hist.append(k_icu * H * N)
+
+    # Implement control and advance to next day
+    i+= 1
     strat = strats[int(round(u))]
     inVec = convertVector(strat)
     openLayers, p = setStrategy(inVec, baseP, layers)
@@ -82,28 +113,15 @@ while cont:
     stateLog.append(countState(attrs, stateList))
     infLog.append(dailyInfs)
     infLogByLayer.append(linfs)
-    count = countState(attrs, stateList)
-    n = 2*pow(10, 5)
-    I = float(count['I'])/n
-    S = float(count['S'])/n
-    #print count
-    R = 1-I-S
-    #print R, I
-    x = matlab.double([[R],[I]])
-    eng.workspace['x'] = x
-    eng.workspace['u_prev'] = u
-    #if i%10 == 0:
-    u = eng.eval('step_nmpc(x,u_prev,dt_u,model,objective,opt);')
     uhist.append(u)
 
-
-
-# Simulate constant control (e.g. use the u calculated above, or try the uncontrolled case, i.e. u = n_control-1)
-# eng.workspace['x_0'] = x
-# eng.workspace['u'] = n_control - 1.0
-# eng.workspace['simTime'] = 240.0
-# [x_out,t_out] = eng.eval('sim_constant_u(x_0,u,dt_u,simTime,model);',nargout=2)
-
-# # Open-loop simualation (u vector)
-# eng.eval('u = (n_control-1)*ones(24,1);',nargout=0)
-# [x_out,t_out] = eng.eval('sim_open_loop(x_0,u,dt_u,model);',nargout=2)
+# Plotting
+plt.figure()
+plt.subplot(211)
+plt.plot(ICU_hist)
+plt.ylabel('ICU')
+plt.subplot(212)
+plt.plot(uhist)
+plt.ylabel('u')
+plt.xlabel('days')
+plt.show()
