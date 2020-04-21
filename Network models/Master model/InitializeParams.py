@@ -4,7 +4,7 @@ import random
 
 
 baseP = {}
-baseP['inf'] = {'BH': 0.0002, 'BS': 0.0002, 'US': 0.0002, 'VS': 0.0002, 'W': 0.0002, 'R': 0.5*pow(10, -6), 'HH': 0.1, 'NH':0.01, 'dynR': 0.005}
+baseP['inf'] = {'BH': 0.0002, 'BS': 0.0002, 'US': 0.0002, 'VS': 0.0002, 'W': 0.0002, 'R': 0.5*pow(10, -6), 'HH': 0.1, 'NH':0.1, 'dynR': 0.005}
 
 baseP['rec'] = 0.1
 
@@ -43,7 +43,8 @@ baseP['DRage'] = {}
 for ageGrp in baseP['Hage']:
     baseP['DRage'][ageGrp] = baseP['Dage'][ageGrp]/(baseP['Hage'][ageGrp]*baseP['S'][ageGrp])
 
-baseP['NHDage'] = {60: baseP['Dage'][60], 70: baseP['Dage'][70], 80: baseP['Dage'][80]}
+    
+baseP['NHDage'] = {60: baseP['DRage'][60], 70: baseP['DRage'][70], 80: baseP['DRage'][80]}
 
 
 
