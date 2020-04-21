@@ -1,11 +1,17 @@
+import sys
 import random
 import numpy as np
 import copy
-#import networkx as nx
+import networkx as nx
+from InitializeParams import *
 
 
 
-stateList = ['S', 'E', 'I', 'R', 'H', 'ICU', 'D']
+stateList = ['S', 'E', 'Ia', 'Ip', 'Is', 'R', 'H', 'ICU', 'D']
+
+#age rounding function
+def roundAge(age):
+    return min(age-age%10, 80)
 
 
 #Initialize full model
@@ -32,7 +38,7 @@ def setRisk(ageFile, riskTableFile, attrs):
 
     
     f = open(ageFile)
-    
+
     for line in f:
         splitLine = line.rstrip().split('\t')
         if random.random() < riskTable[splitLine[1]]:
@@ -57,6 +63,7 @@ def readModel(ageFile, cliqueFile):
         
         attrs[nodeID] = {}
         attrs[nodeID]['age'] = age
+        attrs[nodeID]['decade'] = min(age-age%10, 80)
         if (nodeID-prevID) != 1:
             print ('Out of sequence IDs'), nodeID, prevID
         if age < 19:
@@ -74,8 +81,20 @@ def readModel(ageFile, cliqueFile):
 
     f.close()
 
-
     layers = ['BH', 'BS', 'US', 'VS', 'W', 'HH', 'NH', 'R']
+
+    for node in attrs:
+        attrs[node]['cliques'] = []
+        attrs[node]['state'] = 'S'
+        attrs[node]['aware'] = False
+        attrs[node]['markForSymptoms'] = False
+        attrs[node]['sick'] = False
+        attrs[node]['inNursing'] = False
+        attrs[node]['spreading'] = {}
+        for layer in layers:
+            attrs[node]['spreading'][layer] = False
+    
+        
     translations = {'Kindergarten': 'BH', 'PrimarySchool': 'BS', 'Household':'HH', 'SecondarySchool': 'US', 'UpperSecondarySchool': 'VS', 'Workplace': 'W', 'NursingHome':'NH'}
 
 
@@ -90,13 +109,23 @@ def readModel(ageFile, cliqueFile):
 
         splitLine = line.rstrip().split(';')
 
+        
         if (splitLine[1] != ''):
             clique = []
             for i in splitLine[1:]:
                 clique.append(int(i)-1)
-            
-            cliques[translations[splitLine[0]]].append(clique)
 
+            
+            cName = translations[splitLine[0]]
+            if cName == 'NH':
+                for node in clique:
+                    attrs[node]['inNursing'] = True
+                
+            cliques[cName].append(clique)
+            for node in clique:
+                attrs[node]['cliques'].append([cName, len(cliques[cName])-1])
+
+        
     f.close()
     cliques['R'] = [range(len(attrs))]
     return layers, attrs, cliques
@@ -146,82 +175,183 @@ def filterCliqueAttribute(clique, attrs, attrID, cutoff, mode):
     return newClique
 
 
+def infectNode(attrs, node, anc, layer, day):
+    attrs[node]['state'] = 'E'
+    attrs[node]['lastChangeDay'] = day
+    attrs[node]['infAnc'] = [anc, layer]
+    attrs[anc]['infDesc'].append([node, layer])
+
 #Runs infections over a day
-def cliqueDay(clique, attrs, p, day):
+def cliqueDay(clique, attrs, layer, p, day):
 
     susceptible = 0
     infected = 0
+    infClique = []
     susClique = []
+    
     for node in clique:
         if attrs[node]['state'][0] == 'S':
             susClique.append(node)
-        if attrs[node]['state'][0] == 'I':
-            infected += 1
+        if attrs[node]['spreading'][layer]:
+            infClique.append(node)
+    infected = len(infClique)
     susceptible = len(susClique)
     effP = 1-pow(1-p, infected)
 
     newInfs = random.sample(susClique, np.random.binomial(susceptible, effP))
     for nb in newInfs:
-        attrs[nb]['state'] = ['E', day, max(day+1, round(day+np.random.normal(10, 3)))]
-
+        ancestor = random.choice(infClique)
+        infectNode(attrs, nb, ancestor, layer, day)
         
     return newInfs
 
 
 
-#Turns latent into infectious
+#Daily state progress check and branching functions
 def incubate(node, attrs, p, day):
-    r = random.random()
-    if r < p:
-        attrs[node]['state'][0] = 'I'
-        
-#Infectious to recovered, hospital, or back into susceptible
-def recover(node, attrs, pr, ph, pni, day):
-    r = random.random()
-    if r < pr:
-        attrs[node]['state'] = ['R', day]
-    elif r < pr+ph:
-        attrs[node]['state'] = ['H', day]
-    elif r < pr+ph+pni:
-        attrs[node]['state'] = ['S', day]
-
-#Recovery on predetermined time schedule
-def recoverTimed(node, attrs, ph, pni, picu, day):
-    
-    if attrs[node]['state'][2] == day:
-        r = random.random()
-        if r < ph:
-            if random.random() < picu:
-                attrs[node]['state'] = ['H', day, max(day+1, round(day+np.random.normal(6,3))), 'ICU flag']
-            else:
-                attrs[node]['state'] = ['H', day, max(day+1, round(day+np.random.normal(8,3)))]
-        elif r < ph+pni:
-            attrs[node]['state'] = ['S', day]
+    if random.random() < p['inc']:
+        if random.random() < p['S'][attrs[node]['decade']]:
+            turnPresymp(node, attrs, p, day)
         else:
-            attrs[node]['state'] = ['R', day]
-
-
+            turnAsymp(node, attrs, p, day)
     
-#Hospitalized to dead or recovered
-def hospital(node, attrs, pr, pc, day):
-    r = random.random()
-    if r < pr:
-        attrs[node]['state'] = ['R', day]
-    elif r < pr+pc:
-        attrs[node]['state'] = ['D', day]
+def asymptomatic(node, attrs, p, day):
+    if day == attrs[node]['nextDay']:
+        recover(node, attrs, p, day)
+
+def preSymptomatic(node, attrs, p, day):
+    if day == attrs[node]['nextDay']:
+        activateSymptoms(node, attrs, p, day)
         
-#Hospitalization on predetermined time schedule
-def hospitalTimed(node, attrs, pc, day):
-    if attrs[node]['state'][2] == day:
-        r = random.random()
-        if len(attrs[node]['state']) == 4:
-            attrs[node]['state'] = ['ICU', day, max(day+1, round(day+np.random.normal(10,3)))]
-        elif r < pc:
-            attrs[node]['state'] = ['D', day]
+def symptomatic(node, attrs, p, day):
+    if day == attrs[node]['nextDay']:
+        if attrs[node]['nextState'] == 'D':
+            die(node, attrs, p, day)
+        elif attrs[node]['nextState'] == 'H':
+            hospitalize(node, attrs, p, day)
         else:
-            attrs[node]['state'] = ['R', day]
+            recover(node, attrs, p, day)
+
+def hospital(node, attrs, p, day):
+    if day == attrs[node]['nextDay']:
+        if attrs[node]['nextState'] == 'ICU':
+            enterICU(node, attrs, p, day)
+        elif attrs[node]['nextState'] == 'R':
+            recover(node, attrs, p, day)
+
+def ICU(node, attrs, p, day):
+    if day == attrs[node]['nextDay']:
+        if attrs[node]['nextState'] == 'D':
+            die(node, attrs, p, day)
+        elif attrs[node]['nextState'] == 'R':
+            recover(node, attrs, p, day)
 
             
+#State change functions
+def recover(node, attrs, p, day):
+    attrs[node]['state'] = 'R'
+    attrs[node]['lastDay'] = day
+    attrs[node]['sick'] = False
+    for layer in attrs[node]['spreading']:
+        attrs[node]['spreading'][layer] = False
+        
+    if random.random() < p['NI']:
+        attrs[node]['nextState'] = 'S'
+
+        
+def turnAsymp(node, attrs, p, day):
+    attrs[node]['state'] = 'Ia'
+    attrs[node]['nextState'] = 'R'
+    attrs[node]['nextDay'] = day+1+np.random.poisson(dur['AS-R'])
+    attrs[node]['sick'] = True
+    for layer in attrs[node]['spreading']:
+        attrs[node]['spreading'][layer] = True
+    
+def turnPresymp(node, attrs, p, day):
+    attrs[node]['state'] = 'Ip'
+    attrs[node]['nextState'] = 'Is'
+    attrs[node]['nextDay'] = day+1+np.random.poisson(dur['PS-I'])
+    attrs[node]['sick'] = True
+    for layer in attrs[node]['spreading']:
+        attrs[node]['spreading'][layer] = True
+
+    
+def activateSymptoms(node, attrs, p, day):
+    attrs[node]['state'] = 'Is'
+    attrs[node]['lastDay'] = day
+    for layer in ['BH', 'BS', 'US', 'VS', 'W', 'NH', 'R']:
+        attrs[node]['spreading'][layer] = False
+        
+    attrs[node]['spreading'] 
+    if attrs[node]['inNursing']:
+        if random.random() < p['Dage'][attrs[node]['decade']]:
+            attrs[node]['nextState'] = 'D'
+            attrs[node]['nextDay'] = day+1+np.random.poisson(dur['I-D'])
+        else:
+            attrs[node]['nextState'] = 'R'
+            attrs[node]['nextDay'] = day+1+np.random.poisson(dur['I-R'])
+
+            
+    elif random.random() < p['Hage'][attrs[node]['decade']]:
+        attrs[node]['nextState'] = 'H'
+        attrs[node]['nextDay'] = day+1+np.random.poisson(dur['I-H'])
+    else:
+        attrs[node]['nextState'] = 'R'
+        attrs[node]['nextDay'] = day+1+np.random.poisson(dur['I-R'])
+
+        
+def hospitalize(node, attrs, p, day):
+    attrs[node]['state'] = 'H'
+    attrs[node]['lastDay'] = day
+    for layer in ['HH', 'NH']:
+        attrs[node]['spreading'][layer] = False 
+    
+    if random.random() < p['ICUage'][attrs[node]['decade']]:
+        attrs[node]['nextDay'] = day+1+np.random.poisson(dur['H-ICU'])
+        attrs[node]['nextState'] = 'ICU'
+    else:
+        attrs[node]['nextDay'] = day+1+np.random.poisson(dur['H-R'])
+        attrs[node]['nextState'] = 'R'
+
+    
+def enterICU(node, attrs, p, day):
+    attrs[node]['state'] = 'ICU'
+    attrs[node]['lastDay'] = day
+
+    if random.random() < p['DRage'][attrs[node]['decade']]:
+        attrs[node]['nextDay'] = day+1+np.random.poisson(dur['ICU-D'])
+        attrs[node]['nextState'] = 'D'
+    else:
+        attrs[node]['nextDay'] = day+1+np.random.poisson(dur['ICU-R'])
+        attrs[node]['nextState'] = 'R'
+
+        
+def die(node, attrs, p, day):
+    attrs[node]['state'] = 'D'
+    attrs[node]['lastDay'] = day
+    attrs[node]['nextDay'] = -1
+    attrs[node]['nextState'] = ''
+    attrs[node]['sick'] = False
+    for layer in attrs[node]['spreading']:
+        attrs[node]['spreading'][layer] = False
+
+def stateFunction(state):
+    funcs = {
+        'E': incubate,
+        'Ia': asymptomatic,
+        'Ip': preSymptomatic,
+        'Is': symptomatic,
+        'H': hospital,
+        'ICU': ICU
+        }
+    return funcs[state]
+
+def ifSwitch(node, attrs, p, day):
+    if attrs[node]['state'] == 'E':
+        incubate(node, attrs, p, day)
+    
+
+#Daily pulse
 def systemDay(cliques, attrs, openLayer, p, day):
 
     cont = 0
@@ -233,29 +363,18 @@ def systemDay(cliques, attrs, openLayer, p, day):
 
         if (openLayer[layer] & (layer != 'R')): #i > rel[layer]:
             for clique in cliques[layer]:
-                infs = cliqueDay(clique, attrs, p['inf'][layer], day)
-                #print infs
+                infs = cliqueDay(clique, attrs, layer, p['inf'][layer], day)
                 lInfs[layer] += len(infs)
                 dailyInfs += len(infs)
         
     lInfs['Rp'] = dynRandomLayer(attrs, cliques['R'][0], p['inf']['dynR'], day)
                 
         
-    for node in range(len(attrs)):
-        if attrs[node]['state'][0] == 'E':
-            incubate(node, attrs, p['inc'], day)
+    for node in attrs:
+        if (attrs[node]['sick'] | (attrs[node]['state'] == 'E')):
+            stateFunction(attrs[node]['state'])(node, attrs, p, day)
+            #ifSwitch(node, attrs, p, day)
             cont = True
-        if attrs[node]['state'][0] == 'I':
-            #recover(node, state, p['rec'], p['rec']*p['H'][ageGroup[node]], p['NI'], day)
-            recoverTimed(node, attrs, p['H'][attrs[node]['ageGroup']], p['NI'], 0.3, day)
-            cont = True
-        if attrs[node]['state'][0] == 'H':
-            #hospital(node, state, p['rec'], p['rec']*p['D'][ageGroup[node]], day)
-            hospitalTimed(node, attrs, p['D'][attrs[node]['ageGroup']], day)
-            cont = True
-        if attrs[node]['state'][0] == 'ICU':
-            hospitalTimed(node, attrs, p['D'][attrs[node]['ageGroup']], day)
-    
     return cont, lInfs, dailyInfs
 
 
@@ -264,7 +383,7 @@ def countState(attrs, stateList):
     for s in stateList:
         count[s] = 0
     for node in attrs:
-        count[attrs[node]['state'][0]] += 1
+        count[attrs[node]['state']] += 1
     return count
 
 def genVector(layers):
@@ -301,6 +420,7 @@ def setStrategy(inputVector, probs, layers):
 
     
     newP['inf']['R'] = qFac[inputVector['R']]*probs['inf']['R']
+    newP['inf']['dynR'] = qFac[inputVector['R']]*probs['inf']['dynR']
     
     return isOpen, newP
 
@@ -316,11 +436,15 @@ def fullRun(seedAttrs, layers, cliques, strat, baseP):
     infLog = []
     infLogByLayer = []
     attrs = copy.copy(seedAttrs)
+
+    stateLog.append(countState(attrs, stateList))
     
     while cont:
         i+=1
-        if i%10 == 0:
-            print i
+        sys.stdout.flush()
+        sys.stdout.write(str(i)+'\r')
+            
+
 
         dailyInfs = 0
     
@@ -345,9 +469,9 @@ def timedRun(attrs, layers, cliques, strat, baseP, curDay, runDays):
     
     while i < endDay:
         i+=1
-        if i%10 == 0:
-            print i
-
+        sys.stdout.flush()
+        sys.stdout.write(str(i)+'\r')
+        
         dailyInfs = 0
     
         cont, linfs, dailyInfs = systemDay(cliques, attrs, openLayers, p, i)
@@ -417,6 +541,19 @@ def analyticalR(cliques, openLayers, attrs, p):
     return np.mean(rByNode)
 
 
+def directR(attrs):
+    ageGroups = ['B', 'A1', 'A2', 'E1', 'E2']
+    infs = {}
+    for grp in ageGroups:
+        infs[grp] = 0
+        
+    for node in attrs:
+        if attrs[node]['state'][0] == 'R':
+            infs[attrs[node]['ageGroup']] += len(attrs[node]['infDesc'])
+
+    return infs
+    
+
 #Generate activity for a set of nodes, according to power law
 def genActivity(attrs, dynParams):
     mode = dynParams[0]
@@ -428,6 +565,8 @@ def genActivity(attrs, dynParams):
         else:
             
             attrs[node]['act'] = int(max(np.random.normal(mode, var), 1))
+
+
 
 
 #Generate random cliques according to power law
@@ -442,7 +581,7 @@ def randomLayer(attrs, p, day):
     for node in attrs:
         n = random.randint(1, attrs[node]['act'])
     clique = random.sample(attrs, n)
-    newInfs = cliqueDay(clique, attrs, p, day)
+    newInfs = cliqueDay(clique, attrs, 'R', p, day)
     return newInfs
 
 
@@ -450,14 +589,13 @@ def randomLayer(attrs, p, day):
 def dynRandomLayer(attrs, layer, p, day):
     infs = 0
     for node in layer:
-        if attrs[node]['state'][0] == 'I':
+        if attrs[node]['sick']:
             conns = min(random.randint(0, attrs[node]['act']), len(layer))
             for nNode in random.sample(layer, conns):
                 #print node, nNode, attrs[nNode]['state']
                 if attrs[nNode]['state'][0] == 'S':
                     if random.random() < p:
-                        attrs[nNode]['state'] = ['E', day, max(day+1, round(day+np.random.normal(10, 3)))]
-                                            
+                        infectNode(attrs, nNode, node, 'dynR', day)
                         infs += 1
                 #print node, nNode, attrs[nNode]['state']
                 
@@ -469,7 +607,7 @@ def dynRandomLayer(attrs, layer, p, day):
                     iNeighbors += 1
             if random.random() < 1-pow(1-p, iNeighbors):
                 if random.random() < p:
-                    attrs[node]['state'] = ['E', day, max(day+1, round(day+np.random.normal(10, 3)))]
+                    infectNode(attrs, node, nNode, 'dynR', day)
                     infs += 1
 
 
@@ -479,10 +617,11 @@ def dynRandomLayer(attrs, layer, p, day):
 
 def genBlankState(attrs):
     for node in attrs:
-        attrs[node]['state'] = ['S', 0]
-        
+        attrs[node]['state'] = 'S'
+        attrs[node]['infAnc'] = -1
+        attrs[node]['infDesc'] = []
 
 def seedState(attrs, n):
     for node in random.sample(attrs.keys(), n):
-        attrs[node]['state'] = ['I', 0, random.randint(1, 10)]
-
+        attrs[node]['state'] = 'E'
+        attrs[node]['sick'] = True
