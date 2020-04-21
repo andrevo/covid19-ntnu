@@ -43,7 +43,7 @@ baseP['DRage'] = {}
 for ageGrp in baseP['Hage']:
     baseP['DRage'][ageGrp] = baseP['Dage'][ageGrp]/(baseP['Hage'][ageGrp]*baseP['S'][ageGrp])
 
-baseP['NHDage'] = {60: baseP['Dage'][60], 70: baseP['Dage'][70]}
+baseP['NHDage'] = {60: baseP['Dage'][60], 70: baseP['Dage'][70], 80: baseP['Dage'][80]}
 
 
 
@@ -61,5 +61,6 @@ dur['I-D'] = 10
 dur['I-H'] = 6
 dur['H-R'] = 8
 dur['H-ICU'] = 6
+dur['H-D'] = 16
 dur['ICU-R'] = 10
 dur['ICU-D'] = 10
