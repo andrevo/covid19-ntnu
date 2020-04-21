@@ -189,7 +189,7 @@ def cliqueDay(clique, attrs, layer, p, day):
     susClique = []
     
     for node in clique:
-        if attrs[node]['state'][0] == 'S':
+        if attrs[node]['state'] == 'S':
             susClique.append(node)
         if attrs[node]['spreading'][layer]:
             infClique.append(node)
@@ -203,7 +203,6 @@ def cliqueDay(clique, attrs, layer, p, day):
         infectNode(attrs, nb, ancestor, layer, day)
         
     return newInfs
-
 
 
 #Daily state progress check and branching functions
@@ -411,7 +410,7 @@ def setStrategy(inputVector, probs, layers):
     isOpen = {}
     for layer in inputVector:
         isOpen[layer] = bool(inputVector[layer])
-
+        
     isOpen['NH'] = True
     isOpen['HH'] = True
     qFac = [0.1, 0.2, 0.5, 1]
@@ -547,7 +546,7 @@ def directR(attrs):
         infs[grp] = 0
         
     for node in attrs:
-        if attrs[node]['state'][0] == 'R':
+        if attrs[node]['state'] == 'R':
             infs[attrs[node]['ageGroup']] += len(attrs[node]['infDesc'])
 
     return infs
@@ -562,11 +561,7 @@ def genActivity(attrs, dynParams):
         if (attrs[node]['ageGroup'] in ['A1', 'A2', 'E1']):
             attrs[node]['act'] = int(max(np.random.normal(mode, var), 1) + pow(random.random(), exp))
         else:
-            
             attrs[node]['act'] = int(max(np.random.normal(mode, var), 1))
-
-
-
 
 #Generate random cliques according to power law
 def genRandomClique(seq, ub):
@@ -588,26 +583,25 @@ def randomLayer(attrs, p, day):
 def dynRandomLayer(attrs, layer, p, day):
     infs = 0
     for node in layer:
-        if attrs[node]['sick']:
+        if attrs[node]['spreading']['R']:
             conns = min(random.randint(0, attrs[node]['act']), len(layer))
             for nNode in random.sample(layer, conns):
                 #print node, nNode, attrs[nNode]['state']
-                if attrs[nNode]['state'][0] == 'S':
+                if attrs[nNode]['state'] == 'S':
                     if random.random() < p:
                         infectNode(attrs, nNode, node, 'dynR', day)
                         infs += 1
                 #print node, nNode, attrs[nNode]['state']
                 
         if attrs[node]['state'] == 'S':
-            conns = random.randint(0, attrs[node]['act'])
+            conns = min(random.randint(0, attrs[node]['act']), len(layer))
             iNeighbors = 0
             for nNode in random.sample(layer, conns):
-                if attrs[nNode]['state'][0] == 'I':
+                if attrs[nNode]['spreading']['R']:
                     iNeighbors += 1
             if random.random() < 1-pow(1-p, iNeighbors):
-                if random.random() < p:
-                    infectNode(attrs, node, nNode, 'dynR', day)
-                    infs += 1
+                infectNode(attrs, node, nNode, 'dynR', day)
+                infs += 1
 
 
     return infs
