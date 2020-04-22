@@ -58,14 +58,14 @@ def readModel(ageFile, cliqueFile):
     for line in f:
         prevID = nodeID
         line = line.rstrip().split(';')
-        nodeID = int(line[0])-1
+        nodeID = line[0]
         age = int(line[1])
         
         attrs[nodeID] = {}
         attrs[nodeID]['age'] = age
         attrs[nodeID]['decade'] = min(age-age%10, 80)
-        if (nodeID-prevID) != 1:
-            print ('Out of sequence IDs'), nodeID, prevID
+#        if (nodeID-prevID) != 1:
+#            print ('Out of sequence IDs'), nodeID, prevID
         if age < 19:
             attrs[nodeID]['ageGroup'] = 'B'
         elif age < 55:
@@ -110,10 +110,11 @@ def readModel(ageFile, cliqueFile):
         splitLine = line.rstrip().split(';')
 
         
-        if (splitLine[1] != ''):
+        if (splitLine[1] != '') & (splitLine[0].split('_')[0] != 'Commuters'):
             clique = []
             for i in splitLine[1:]:
-                clique.append(int(i)-1)
+                if unicode(i, 'utf-8').isnumeric():
+                    clique.append(i)
 
             
             cName = translations[splitLine[0]]
@@ -127,7 +128,7 @@ def readModel(ageFile, cliqueFile):
 
         
     f.close()
-    cliques['R'] = [range(len(attrs))]
+    cliques['R'] = attrs.keys()
     return layers, attrs, cliques
 
 
