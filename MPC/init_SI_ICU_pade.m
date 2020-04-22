@@ -1,4 +1,4 @@
-use_beta = 0
+use_beta = 0;
 [numP,denP] = padecoef(25,n_pade);
 [A,B,C,D] = tf2ss(numP,denP);
 params.A = A;

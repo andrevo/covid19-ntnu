@@ -7,8 +7,7 @@ import matlab.engine
 def controlledRun(seedAttrs, layers, cliques, baseP, simDays):
     cont = 1
     i = 0
-    u = 4
-
+    
     strats = [{'S': 0, 'W': 0, 'R': 1}, {'S': 1, 'W': 0, 'R': 1}, {'S': 1, 'W': 0, 'R': 2}, {'S': 1, 'W': 1, 'R': 2},
               {'S': 1, 'W': 1, 'R': 3}]  # Schools
 
@@ -19,8 +18,8 @@ def controlledRun(seedAttrs, layers, cliques, baseP, simDays):
 
     eng = matlab.engine.start_matlab()
     eng.addpath(r'/home/ubuntu/software/casadi')
-    eng.addpath(r'/home/ubuntu/software/casadi/covid19_master/MPC', nargout=0)
-    eng.addpath(r'/home/ubuntu/software/casadi/covid19_master-ntnu/MPC/models', nargout=0)
+    eng.addpath(r'/home/ubuntu/software/covid19_master/MPC', nargout=0)
+    eng.addpath(r'/home/ubuntu/software/covid19_master/MPC/models', nargout=0)
 
     # Population size
     N = 617371.0
@@ -31,7 +30,7 @@ def controlledRun(seedAttrs, layers, cliques, baseP, simDays):
 
     # Run init script
     n_pade = 3
-    eng.workspace['n_pade'] = n_pade
+    eng.workspace['n_pade'] = matlab.double([n_pade])
     eng.init_SI_ICU_pade(nargout=0)
     eng.eval('opt.horizon = 80;', nargout=0)
     eng.eval('opt.integer = 0;', nargout=0)
@@ -53,7 +52,7 @@ def controlledRun(seedAttrs, layers, cliques, baseP, simDays):
 
     # Initial condition for actual pade states
     z_0 = []
-    for i in range(n_pade):
+    for l in range(n_pade):
         z_0.append([0])
     eng.workspace['z_0'] = matlab.double(z_0)
 
@@ -61,7 +60,8 @@ def controlledRun(seedAttrs, layers, cliques, baseP, simDays):
 
     while cont and (i < simDays):
 
-        if (i % dt_u == 1)
+        if (i % dt_u == 1):
+            print i, (i % dt_u)
             S = float(count['S']) / N
             I = float(count['Ia'] + count['Ip']) / N
             ICU = float(count['ICU']) / N
@@ -70,13 +70,13 @@ def controlledRun(seedAttrs, layers, cliques, baseP, simDays):
             eng.workspace['x'] = matlab.double(x)
 
             eng.workspace['d_est'] = d_est
-            eng.eval('model.dyn_fun = @(x,u) dynamics_SIR_ICU_d_1(x,u,d_est,param,model.beta_fun,n_pade);', nargout=0)
+            eng.eval('model.dyn_fun = @(x,u) dynamics_SIR_ICU_d_1(x,u,d_est,params,model.beta_fun,n_pade);', nargout=0)
 
-            eng.workspace['u_prev'] = int(round(u))
+            eng.workspace['u_prev'] = round(u)
 
             u = eng.eval('step_nmpc([x;z_0],u_prev,dt_u,model,objective,opt);')
 
-            eng.workspace['p_I'] = matlab.double(I)
+            eng.workspace['p_I'] = I
             eng.eval('u_z = p_I*(params.c*p_I + params.d);', nargout=0)
             eng.eval('z_0 = sim_z(params.A,params.B,u_z,z_0);', nargout=0) # NB! This is open-loop. Use observer?
 
@@ -85,12 +85,12 @@ def controlledRun(seedAttrs, layers, cliques, baseP, simDays):
             e_y = 0.9 * ICU_max / N - ICU
             d_est += k_I * e_y
 
-            #e_pred_out.append(N * e_y)
-            #d_est_out.append(d_est)
-
+#e_pred_out.append(N * e_y)
+#d_est_out.append(d_est)
+ 
         i += 1
-        sys.stdout.flush()
-        sys.stdout.write(str(i) + '\r')
+        #sys.stdout.flush()
+        #sys.stdout.write(str(i) + '\r')
 
         dailyInfs = 0
 
