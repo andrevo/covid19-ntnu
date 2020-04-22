@@ -32,7 +32,7 @@ baseP['Hage'] = {0: 0.0001, 10: 0.00048, 20: 0.0104, 30: 0.0343, 40: 0.0425, 50:
 #Hospitalization corrected for asymptomatic cases
 baseP['HRage'] = {}
 for ageGrp in baseP['Hage']:
-    baseP['HRage'][ageGrp] = baseP['Hage'][ageGrp]*baseP['S'][ageGrp]
+    baseP['HRage'][ageGrp] = baseP['Hage'][ageGrp]/baseP['S'][ageGrp]
 
 #ICU per hospitalization by age bracket
 
