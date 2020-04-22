@@ -4,8 +4,9 @@ import numpy
 from joblib import Parallel, delayed
 import multiprocessing
 
-strats = [{'S': 0, 'W': 0, 'R': 1}, {'S': 1, 'W': 0, 'R': 1}, {'S': 1, 'W': 0, 'R': 2}, {'S': 1, 'W': 1, 'R': 2},
-              {'S': 1, 'W': 1, 'R': 3}]  # Schools
+#strats = [{'S': 0, 'W': 0, 'R': 1}, {'S': 1, 'W': 0, 'R': 1}, {'S': 1, 'W': 0, 'R': 2}, {'S': 1, 'W': 1, 'R': 2},{'S': 1, 'W': 1, 'R': 3}]  # Schools
+strats = [{'S': 0, 'W': 0, 'R': 1}, {'S': 0, 'W': 0, 'R': 2}, {'S': 0, 'W': 0, 'R': 3},{'S': 0, 'W': 1, 'R': 1}, {'S': 0, 'W': 1, 'R': 2}, {'S': 0, 'W': 1, 'R': 3},{'S': 1, 'W': 0, 'R': 1}, {'S': 1, 'W': 0, 'R': 2}, {'S': 1, 'W': 0, 'R': 3},{'S': 1, 'W': 1, 'R': 1}, {'S': 1, 'W': 1, 'R': 2}, {'S': 1, 'W': 1, 'R': 3}]  # All excep R=0
+
 
 def run_u(u,days):
     layers, attrs, cliques = initModel('idAndAge_Oslo.txt', 'socialNetwork_Oslo.txt', '', baseP, [10, 3, -.75], 20)
@@ -31,11 +32,19 @@ def test_all_strats_multi(days,N):
 def test_strat_multi(u,days,N):
     num_cores = multiprocessing.cpu_count()
     logs = Parallel(n_jobs=num_cores, verbose=10)(delayed(run_u)(u,days) for j in range(N))
-    for k in range(len(out)):
+    for k in range(len(logs)):
         data = {}
         for comp in stateList:
             data[comp] = numpy.array([d[comp] for d in logs[k]])
         fileName = 'data/data_dict_test_u' + str(u) + '_run' + str(k) + '.mat'
+        scipy.io.savemat(fileName, data)
+
+def run_u_and_save(u,k,days):
+    stateLog = run_u(u,days)
+    data = {}
+    for comp in stateList:
+        data[comp] = numpy.array([d[comp] for d in stateLog])
+        fileName = 'data_3/data_dict_test_u' + str(u) + '_run' + str(k) + '.mat'
         scipy.io.savemat(fileName, data)
 
 # Process state log
@@ -48,7 +57,16 @@ def process_logs(logs,k):
         fileName = 'data/data_dict_test_u' + str(u) + '_run' + str(k) + '.mat'
         scipy.io.savemat(fileName, data)
 
-maxDays = 2
-N = 2
-for u in range(len(strats)):
-    test_strat_multi(u,maxDays,N)
+maxDays = 10000
+N = 10
+#for u in range(len(strats)):
+#    test_strat_multi(u,maxDays,N)
+
+num_cores = multiprocessing.cpu_count()
+Parallel(n_jobs=num_cores, verbose=10)(delayed(run_u_and_save)(u,k,maxDays) for k in range(N) for u in range(len(strats)))
+
+
+
+
+
+
