@@ -294,7 +294,7 @@ def activateSymptoms(node, attrs, p, day):
             attrs[node]['nextDay'] = day+1+np.random.poisson(dur['I-R'])
 
             
-    elif random.random() < p['Hage'][attrs[node]['decade']]:
+    elif random.random() < p['HRage'][attrs[node]['decade']]:
         attrs[node]['nextState'] = 'H'
         attrs[node]['nextDay'] = day+1+np.random.poisson(dur['I-H'])
     else:
