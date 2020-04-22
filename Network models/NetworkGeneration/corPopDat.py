@@ -59,7 +59,7 @@ def generateDemographicData():
   dirname = os.path.dirname(__file__)
   dirname = dirname+"/populationData/"
   try:
-    os.mkdir("populationData")
+    os.mkdir(dirname)
   except:
     print("Directory 'populationData' already exists")
 
@@ -2441,6 +2441,136 @@ def generateDemographicData():
   dataset = pyjstat.Dataset.read(result.text)
   kinderGartenAttendanceAndPersonnel_dataFrame = dataset.write('dataframe')
   kinderGartenAttendanceAndPersonnel_dataFrame.to_csv(dirname+'kinderGartenAttendanceAndPersonnel.csv')
+
+  ##################################################  #################################################
+  #03321: Employed persons (aged 15-74) per 4th quarter, by municipality of work, municipality of residence, contents and year
+  print("Fetching SSB dataset: 03321: Employed persons (aged 15-74) per 4th quarter, by municipality of work, municipality of residence, contents and year")
+
+  POST_URL = 'https://data.ssb.no/api/v0/en/table/03321'
+
+  # API query  - 
+  payload = {
+  "query": [
+    {
+      "code": "ArbstedKomm",
+      "selection": {
+        "filter": "all",
+        "values": [
+          "*"
+        ]
+      }
+    },
+    {
+      "code": "Bokommuen",
+      "selection": {
+        "filter": "all",
+        "values": [
+          "*"
+        ]
+      }
+    },
+    {
+      "code": "ContentsCode",
+      "selection": {
+        "filter": "item",
+        "values": [
+          "Sysselsatte"
+        ]
+      }
+    },
+    {
+      "code": "Tid",
+      "selection": {
+        "filter": "item",
+        "values": [
+          "2019"
+        ]
+      }
+    }
+  ],
+  "response": {
+    "format": "json-stat2"
+  }
+}
+
+
+  result = requests.post(POST_URL, json = payload)
+  # Result gives only http status code - 200 if OK. Body comes in resultat.text
+  print(result)
+
+  dataset = pyjstat.Dataset.read(result.text)
+  municipalityResidenceEmployment_dataFrame = dataset.write('dataframe')
+  municipalityResidenceEmployment_dataFrame.to_csv(dirname+'municipalityResidenceEmployment.csv')
+
+  ####################################################################################################  #################################################
+  #06445: Employed persons, by place of residence, sex and age (per cent). 4th quarter (M) 2005 - 2019
+  print("Fetching SSB dataset: 06445: Employed persons, by place of residence, sex and age (per cent). 4th quarter (M) 2005 - 2019")
+
+  POST_URL = 'https://data.ssb.no/api/v0/en/table/06445'
+
+  # API query  - 
+  payload = {
+  "query": [
+    {
+      "code": "Region",
+      "selection": {
+        "filter": "all",
+        "values": [
+          "*"
+        ]
+      }
+    },
+    {
+      "code": "Kjonn",
+      "selection": {
+        "filter": "all",
+        "values": [
+          "*"
+        ]
+      }
+    },
+    {
+      "code": "Alder",
+      "selection": {
+        "filter": "all",
+        "values": [
+          "*"
+        ]
+      }
+    },
+    {
+      "code": "ContentsCode",
+      "selection": {
+        "filter": "item",
+        "values": [
+          "Sysselsatte"
+        ]
+      }
+    },
+    {
+      "code": "Tid",
+      "selection": {
+        "filter": "item",
+        "values": [
+          "2019"
+        ]
+      }
+    }
+  ],
+  "response": {
+    "format": "json-stat2"
+  }
+}
+
+
+
+  result = requests.post(POST_URL, json = payload)
+  # Result gives only http status code - 200 if OK. Body comes in resultat.text
+  print(result)
+
+  dataset = pyjstat.Dataset.read(result.text)
+  employementRate_dataFrame = dataset.write('dataframe')
+  employementRate_dataFrame.to_csv(dirname+'employementRate.csv')
 
   ##################################################
 
