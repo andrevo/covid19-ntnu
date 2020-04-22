@@ -6,6 +6,6 @@ function z_out = sim_z(A,B,u,z0)
     
     % Simulate one day
     [~,z] = ode45(x_dot,[0, 1],z0);
-    z_out = z(end,:);
+    z_out = z(end,:)';
 end
 

@@ -58,6 +58,9 @@ def controlledRun(seedAttrs, layers, cliques, baseP, simDays):
 
     count = countState(attrs, stateList)
 
+    d_est_out = []
+    d_est_out.append(d_est)
+
     while cont and (i < simDays):
 
         if (i % dt_u == 1):
@@ -85,10 +88,11 @@ def controlledRun(seedAttrs, layers, cliques, baseP, simDays):
             e_y = 0.9 * ICU_max / N - ICU
             d_est += k_I * e_y
 
-#e_pred_out.append(N * e_y)
-#d_est_out.append(d_est)
+            #e_pred_out.append(N * e_y)
+            d_est_out.append(d_est)
  
         i += 1
+        print i
         #sys.stdout.flush()
         #sys.stdout.write(str(i) + '\r')
 
@@ -105,8 +109,21 @@ def controlledRun(seedAttrs, layers, cliques, baseP, simDays):
         infLog.append(dailyInfs)
         infLogByLayer.append(linfs)
 
-    return stateLog, infLog, infLogByLayer, i
+    return stateLog, infLog, infLogByLayer, i, d_est_out
 
 layers, attrs, cliques = initModel('idAndAge_Oslo.txt', 'socialNetwork_Oslo.txt', '', baseP, [10, 3, -.75], 20)
-days = 3
-stateLog, infLog, infLogByLayer, i, = controlledRun(attrs, layers, cliques, baseP, days)
+days = 20000
+stateLog, infLog, infLogByLayer, i, d_est_out, = controlledRun(attrs, layers, cliques, baseP, days)
+
+data = {}
+data['d_est'] = d_est_out
+for comp in stateList:
+    data[comp] = numpy.array([d[comp] for d in stateLog])
+fileName = 'closedLoop_test.mat'
+scipy.io.savemat(fileName,data)
+
+
+
+
+
+
