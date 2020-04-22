@@ -55,13 +55,14 @@ stateInf = {}
 
 dur = {}
 dur['I-E'] = 1
-dur['AS-R'] = 8
-dur['PS-I'] = 6
-dur['I-R'] = 8
-dur['I-D'] = 10
-dur['I-H'] = 6
+dur['AS-R'] = 5
+dur['PS-I'] = 2
+dur['I-R'] = 5
+
+dur['I-H'] = 8
 dur['H-R'] = 8
-dur['H-ICU'] = 6
-dur['H-D'] = 16
-dur['ICU-R'] = 10
-dur['ICU-D'] = 10
+dur['H-ICU'] = 4
+dur['ICU-R'] = 12
+dur['ICU-D'] = 12
+dur['H-D'] = dur['H-ICU']+.5*dur['ICU-D']
+dur['I-D'] = dur['I-H']+dur['H-D']

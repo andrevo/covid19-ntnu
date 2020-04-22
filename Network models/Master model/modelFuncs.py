@@ -285,7 +285,7 @@ def activateSymptoms(node, attrs, p, day):
         
     attrs[node]['spreading'] 
     if attrs[node]['inNursing']:
-        if random.random() < p['Dage'][attrs[node]['decade']]:
+        if random.random() < p['DRage'][attrs[node]['decade']]:
             attrs[node]['nextState'] = 'D'
             attrs[node]['nextDay'] = day+1+np.random.poisson(dur['I-D'])
         else:
