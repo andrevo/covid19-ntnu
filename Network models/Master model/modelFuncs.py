@@ -128,7 +128,7 @@ def readModel(ageFile, cliqueFile):
 
         
     f.close()
-    cliques['R'] = attrs.keys()
+    cliques['R'] = [attrs.keys()]
     return layers, attrs, cliques
 
 
