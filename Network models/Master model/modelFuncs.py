@@ -233,10 +233,13 @@ def symptomatic(node, attrs, p, day):
 
 def hospital(node, attrs, p, day):
     if day == attrs[node]['nextDay']:
+        
         if attrs[node]['nextState'] == 'ICU':
             enterICU(node, attrs, p, day)
         elif attrs[node]['nextState'] == 'R':
             recover(node, attrs, p, day)
+        elif attrs[node]['nextState'] == 'D':
+            die(node, attrs, p, day)
 
 def ICU(node, attrs, p, day):
     if day == attrs[node]['nextDay']:
@@ -283,7 +286,7 @@ def activateSymptoms(node, attrs, p, day):
         
     attrs[node]['spreading'] 
     if attrs[node]['inNursing']:
-        if random.random() < p['Dage'][attrs[node]['decade']]:
+        if random.random() < p['DRage'][attrs[node]['decade']]:
             attrs[node]['nextState'] = 'D'
             attrs[node]['nextDay'] = day+1+np.random.poisson(dur['I-D'])
         else:
@@ -304,10 +307,17 @@ def hospitalize(node, attrs, p, day):
     attrs[node]['lastDay'] = day
     for layer in ['HH', 'NH']:
         attrs[node]['spreading'][layer] = False 
-    
+
+
+
+        
     if random.random() < p['ICUage'][attrs[node]['decade']]:
         attrs[node]['nextDay'] = day+1+np.random.poisson(dur['H-ICU'])
         attrs[node]['nextState'] = 'ICU'
+        
+    elif random.random() < p['DRage'][attrs[node]['decade']]:
+        attrs[node]['nextDay'] = day+1+np.random.poisson(dur['H-D'])
+        attrs[node]['nextState'] = 'D'
     else:
         attrs[node]['nextDay'] = day+1+np.random.poisson(dur['H-R'])
         attrs[node]['nextState'] = 'R'
@@ -326,6 +336,7 @@ def enterICU(node, attrs, p, day):
 
         
 def die(node, attrs, p, day):
+    attrs[node]['diedFrom'] = attrs[node]['state']
     attrs[node]['state'] = 'D'
     attrs[node]['lastDay'] = day
     attrs[node]['nextDay'] = -1

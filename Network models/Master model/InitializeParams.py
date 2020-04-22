@@ -4,7 +4,7 @@ import random
 
 
 baseP = {}
-baseP['inf'] = {'BH': 0.0002, 'BS': 0.0002, 'US': 0.0002, 'VS': 0.0002, 'W': 0.0002, 'R': 0.5*pow(10, -6), 'HH': 0.1, 'NH':0.01, 'dynR': 0.005}
+baseP['inf'] = {'BH': 0.0002, 'BS': 0.0002, 'US': 0.0002, 'VS': 0.0002, 'W': 0.0002, 'R': 0.5*pow(10, -6), 'HH': 0.1, 'NH':0.1, 'dynR': 0.005}
 
 baseP['rec'] = 0.1
 
@@ -43,7 +43,8 @@ baseP['DRage'] = {}
 for ageGrp in baseP['Hage']:
     baseP['DRage'][ageGrp] = baseP['Dage'][ageGrp]/(baseP['Hage'][ageGrp]*baseP['S'][ageGrp])
 
-baseP['NHDage'] = {60: baseP['Dage'][60], 70: baseP['Dage'][70]}
+    
+baseP['NHDage'] = {60: baseP['DRage'][60], 70: baseP['DRage'][70], 80: baseP['DRage'][80]}
 
 
 
@@ -54,12 +55,14 @@ stateInf = {}
 
 dur = {}
 dur['I-E'] = 1
-dur['AS-R'] = 8
-dur['PS-I'] = 6
-dur['I-R'] = 8
-dur['I-D'] = 10
-dur['I-H'] = 6
+dur['AS-R'] = 5
+dur['PS-I'] = 2
+dur['I-R'] = 5
+
+dur['I-H'] = 8
 dur['H-R'] = 8
-dur['H-ICU'] = 6
-dur['ICU-R'] = 10
-dur['ICU-D'] = 10
+dur['H-ICU'] = 4
+dur['ICU-R'] = 12
+dur['ICU-D'] = 12
+dur['H-D'] = dur['H-ICU']+.5*dur['ICU-D']
+dur['I-D'] = dur['I-H']+dur['H-D']
