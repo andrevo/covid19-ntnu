@@ -32,7 +32,7 @@ baseP['Hage'] = {0: 0.0001, 10: 0.00048, 20: 0.0104, 30: 0.0343, 40: 0.0425, 50:
 #Hospitalization corrected for asymptomatic cases
 baseP['HRage'] = {}
 for ageGrp in baseP['Hage']:
-    baseP['HRage'][ageGrp] = baseP['Hage'][ageGrp]/baseP['S'][ageGrp]
+    baseP['HRage'][ageGrp] = baseP['Hage'][ageGrp]*baseP['S'][ageGrp]
 
 #ICU per hospitalization by age bracket
 
@@ -46,7 +46,7 @@ baseP['Dage'] = {0: 1.61*pow(10, -5), 10: 6.95*pow(10, -5), 20: 3.09*pow(10, -4)
 #Death rate by age group
 baseP['DRage'] = {}
 for ageGrp in baseP['Hage']:
-    baseP['DRage'][ageGrp] = baseP['Dage'][ageGrp]/(baseP['Hage'][ageGrp]*baseP['S'][ageGrp])
+    baseP['DRage'][ageGrp] = baseP['Dage'][ageGrp]/(baseP['Hage'][ageGrp])
 
     
 baseP['NHDage'] = {60: baseP['DRage'][60], 70: baseP['DRage'][70], 80: baseP['DRage'][80]}
@@ -58,10 +58,10 @@ stateInf = {}
 dur = {}
 dur['I-E'] = 1
 
-dur['PS-I'] = 2
+dur['PS-I'] = 5
 dur['I-R'] = 5
-dur['I-H'] = 8
-dur['AS-R'] = 5
+dur['I-H'] = 6
+dur['AS-R'] = 8
 dur['H-R'] = 8
 dur['H-ICU'] = 4
 dur['ICU-R'] = 12
