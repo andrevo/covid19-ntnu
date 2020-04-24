@@ -120,7 +120,8 @@ def readModel(ageFile, cliqueFile):
             cName = translations[splitLine[0]]
             if cName == 'NH':
                 for node in clique:
-                    attrs[node]['inNursing'] = True
+                    if attrs[node]['age'] > 70:
+                        attrs[node]['inNursing'] = True
                 
             cliques[cName].append(clique)
             for node in clique:
@@ -287,7 +288,7 @@ def activateSymptoms(node, attrs, p, day):
         
     attrs[node]['spreading'] 
     if attrs[node]['inNursing']:
-        if random.random() < p['DRage'][attrs[node]['decade']]:
+        if random.random() < p['NHDage'][attrs[node]['decade']]:
             attrs[node]['nextState'] = 'D'
             attrs[node]['nextDay'] = day+1+np.random.poisson(dur['I-D'])
         else:
