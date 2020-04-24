@@ -24,6 +24,7 @@ def getAgeDistribution(queryMunicipality,dataDirName):
             queryAge = "1 year"
         ageVals = osloAges.loc[osloAges['age'] == queryAge]
         ageDistribution.append(sum(ageVals['value']))
+    print("Generated age distribution with "+str(sum(ageDistribution))+" people")
     return ageDistribution
 
 def getHouseholdSizeDistribution(queryMunicipality,dataDirName):
@@ -76,6 +77,7 @@ def getHouseHoldTypeDistribution(queryMunicipality,dataDirName):
     #No siblings 0.56/0.44
     #Siblings 0.80/0.20
     #TOT 0.75/0.25
+    print("Generated household type distribution with "+str(sum(householdNumbers))+" households")
     return householdData
 
 def getSiblingFlockSizeDistribution(dataDirName):
@@ -93,6 +95,7 @@ def getSiblingFlockSizeDistribution(dataDirName):
     for i in range(len(siblingFlockSizeDistribution)-1):
         siblingFlockSizeDistribution[i+1] = 0.803*siblingFlockSizeDistribution[i+1]/siblingFlockSum
     assert sum(siblingFlockSizeDistribution)>0.99 and sum(siblingFlockSizeDistribution)<1.01
+    print("Generated sibling flock size distribution")
     return siblingFlockSizeDistribution
     
 def getSecondaryEducationProportion(dataDirName):
@@ -139,6 +142,7 @@ def getWorkplaceSizeDistribution(queryMunicipality,dataDirName):
     for i in employeeBins:
         employeeNumbers.append(sum(regionEstablishments.loc[regionEstablishments['number of employees'] == i]['value']))
     assert len(employeeBins) == len(employeeNumbers)
+    print("Generated workplace size distribution with "+str(len(employeeNumbers))+" workplaces and "+str(sum(employeeNumbers))+" employees")
     return [employeeBins,employeeNumbers]
 
 def getSchoolSizeDistribution(queryMunicipality,dataDirName):
@@ -273,6 +277,9 @@ def getSchoolSizeDistribution(queryMunicipality,dataDirName):
         secondarySchoolSlotsVacant[schoolIndex] = secondarySchoolSlotsVacant[schoolIndex]-int(3*primarySchoolSizes[school])
 
     schoolEmployees = [primarySchoolEmployees,secondarySchoolEmployees,upperSecondarySchoolEmployees]
+
+    print("Generated school size distribution, with "+str(len(primarySchoolSizes))+" primary schools, "+str(len(secondarySchoolSizes))+" secondary schools, and "+str(len(upperSecondarySchoolDistribution))+" high schools")
+    
     return [primarySchoolSizes,secondarySchoolSizes,schoolAssociations],upperSecondarySchoolDistribution,schoolEmployees #schoolAssocations has secondary school ID as index and primary school IDs as value
 
 def getElderlyHomeDistribution(queryMunicipality,queryCounty,dataDirName):
@@ -344,6 +351,8 @@ def getElderlyHomeDistribution(queryMunicipality,queryCounty,dataDirName):
     #     nursingHomeSize = random.choices(population, weights)
     #     nursingHomeSize = nursingHomeSize[0]
     #     nursingHomeSizes.append(nursingHomeSize)
+    
+    print("Generated "+str(len(nursingHomeSizes))+" nursing homes")
 
     return nursingHomeSizes,[ageBins,ageNumbers]
 
@@ -385,6 +394,8 @@ def getKindergartenDistribution(queryMunicipality,dataDirName):
     kindergartenSizes = [meanKindergartenSize for x in range(numberOfKindergartens)]
     kindergartenProportions = [0]+[smallKidsRates/100 for x in range(2)]+[bigKidsRates/100 for x in range(3)]
 
+    print("Generated "+str(len(kindergartenSizes))+" kindergartens")
+
     return kindergartenSizes,kindergartenProportions
 
 def getCommuteData(queryMunicipality,dataDirName):
@@ -422,6 +433,8 @@ def getCommuteData(queryMunicipality,dataDirName):
             targetRegionList[i] = targetRegion
     commuterHomePlaces = [targetRegionList,targetRegionNumbers]
 
+    print("Generated commuters, with "+str(sum(targetRegionNumbers))+" commuters going out, and "+str(sum(originRegionNumbers))+" commuters coming in")
+
     return commuterEmploymentPlaces,commuterHomePlaces
 
 def getWorkAgeProbability(queryMunicipality,dataDirName):
@@ -452,6 +465,9 @@ def getWorkAgeProbability(queryMunicipality,dataDirName):
         ageNumbers = [67.1,35.6,64,80,82.4,67.4,18.8]
     
     workAgeProbability = [[0,14,0],[15,19,ageNumbers[1]],[20,24,ageNumbers[2]],[25,39,ageNumbers[3]],[40,54,ageNumbers[4]],[55,66,ageNumbers[5]],[67,74,ageNumbers[6]],[74,110,0]]
+
+    print("Generated probabilities of people working at given ages")
+
     return workAgeProbability
 
 
@@ -463,7 +479,7 @@ def generateSocialNetworkForRegion(municipalityToGet):
     # to generate the actual social network linking people into
     # cliques, such as households, workplaces, schools, etc.
 
-    print("Generating network for "+municipalityToGet)
+    print("Generating cliques and social network for "+municipalityToGet)
 
     dataDirName = os.path.dirname(__file__)
     dataDirName = dataDirName+"/populationData/"
@@ -558,6 +574,8 @@ def generateSocialNetworkForRegion(municipalityToGet):
 
     #generating households
 
+    print("Building "+str(numberHouseholds)+" households")
+
     peopleAgeList = []
     householdPeopleList = []
 
@@ -569,21 +587,22 @@ def generateSocialNetworkForRegion(municipalityToGet):
         weights = copy.deepcopy(householdTypeDistribution[1])
         householdType = random.choices(population, weights)
         householdType = householdType[0]
-        age = 0
+        age = -1
         household = []
         if householdType == 0: #Living alone
             householdsPicked[0] = householdsPicked[0]+1
             population = range(len(ageDistribution))
             weights = copy.deepcopy(ageDistribution)
             for j in range(len(ageDistribution)):
-                #assuming people 19-30 are 1/3 as likely to live alone
-                if j>=19 and j<=30:
+                #assuming people 19-26 are 1/3 as likely to live alone
+                if j>=19 and j<=26:
                     weights[j] = weights[j]*(1/3)
-                #assuming people under 18 don't live alone
+                #assuming people 18 and under don't live alone
                 if j<=18:
                     weights[j] = weights[j]*0
             age = random.choices(population, weights)
             age = age[0]
+            assert age>=19
             household.append([peopleIDs,age])
             peopleIDs = peopleIDs+1
         elif householdType == 1: #Couple without resident children
@@ -591,8 +610,8 @@ def generateSocialNetworkForRegion(municipalityToGet):
             population = range(len(ageDistribution))
             weights = copy.deepcopy(ageDistribution)
             for j in range(len(ageDistribution)):
-                #assuming people 30-50 are 1/3 as likely to be childless
-                if j>=30 and j<=50:
+                #assuming people 27-50 are 1/3 as likely to be childless
+                if j>=27 and j<=50:
                     weights[j] = weights[j]*(1/3)
                 #assuming people under 18 don't live as couples
                 if j<=18:
@@ -600,6 +619,7 @@ def generateSocialNetworkForRegion(municipalityToGet):
             for j in range(2):
                 age = random.choices(population, weights)
                 age = age[0]
+                assert age>=18
                 household.append([peopleIDs,age])
                 peopleIDs = peopleIDs+1
         elif householdType == 2: #Couple with small children (youngest child 0-5 years)
@@ -607,16 +627,17 @@ def generateSocialNetworkForRegion(municipalityToGet):
             population = range(len(ageDistribution))
             weights = copy.deepcopy(ageDistribution)
             for j in range(len(ageDistribution)):
-                #assuming people under 18 and over 60 don't have small children
+                #assuming people under 18 and over 50 don't have small children
                 if j<=18 or j>=50:
                     weights[j] = weights[j]*0
-                #assuming people 30-45 are 2x as likely to have small children
-                if j>=30 and j<=45:
+                #assuming people 27-45 are 2x as likely to have small children
+                if j>=27 and j<=45:
                     weights[j] = weights[j]*2
             #parents' age are assumed to be uncorrelated
             for j in range(2):
                 age = random.choices(population, weights)
                 age = age[0]
+                assert age>=18 and age <=50
                 household.append([peopleIDs,age])
                 peopleIDs = peopleIDs+1
             #sibling flock size is assumed to be selected from standard distribution
@@ -633,6 +654,7 @@ def generateSocialNetworkForRegion(municipalityToGet):
                         weights[i] = weights[i]*4
                 age = random.choices(population, weights)
                 age = age[0]
+                assert age>=0 and age<=18
                 household.append([peopleIDs,age])
                 peopleIDs = peopleIDs+1
         elif householdType == 3: #Couple with older children (youngest child 6-17 years)
@@ -650,6 +672,7 @@ def generateSocialNetworkForRegion(municipalityToGet):
             for j in range(2):
                 age = random.choices(population, weights)
                 age = age[0]
+                assert age>=25 and age<=65
                 household.append([peopleIDs,age])
                 peopleIDs = peopleIDs+1
             #sibling flock size is assumed to be between 1 and 3
@@ -662,6 +685,7 @@ def generateSocialNetworkForRegion(municipalityToGet):
                 weights = ageDistribution[6:19]
                 age = random.choices(population, weights)
                 age = age[0]
+                assert age>=6 and age<=18
                 household.append([peopleIDs,age])
                 peopleIDs = peopleIDs+1
         elif householdType == 4: #Lone parent with small children (youngest child 0-5 years)
@@ -669,7 +693,7 @@ def generateSocialNetworkForRegion(municipalityToGet):
             population = range(len(ageDistribution))
             weights = copy.deepcopy(ageDistribution)
             for j in range(len(ageDistribution)):
-                #assuming people under 18 and over 60 don't have small children
+                #assuming people under 18 and over 50 don't have small children
                 if j<=18 or j>=50:
                     weights[j] = weights[j]*0
                 #assuming people 30-45 are 2x as likely to have small children
@@ -677,6 +701,7 @@ def generateSocialNetworkForRegion(municipalityToGet):
                     weights[j] = weights[j]*2
             age = random.choices(population, weights)
             age = age[0]
+            assert age>=18 and age<=60
             household.append([peopleIDs,age])
             peopleIDs = peopleIDs+1
             #sibling flock size is considered 1/4 as likely to be larger than 1
@@ -696,6 +721,7 @@ def generateSocialNetworkForRegion(municipalityToGet):
                         weights[i] = weights[i]*4
                 age = random.choices(population, weights)
                 age = age[0]
+                assert age>=0 and age<=17
                 household.append([peopleIDs,age])
                 peopleIDs = peopleIDs+1
         elif householdType == 5: #Lone parent with older children (youngest child 6-17 years)
@@ -711,21 +737,24 @@ def generateSocialNetworkForRegion(municipalityToGet):
                     weights[j] = weights[j]*1.5
             age = random.choices(population, weights)
             age = age[0]
+            assert age>=25 and age<=65
             household.append([peopleIDs,age])
             peopleIDs = peopleIDs+1
             #sibling flock size is assumed to be between 1 and 3, and to be 1/4 as likely to be larger than 1
-            population = range(len(siblingFlockSizeDistribution[0:4]))
-            weights = copy.deepcopy(siblingFlockSizeDistribution[0:4])
-            for j in range(len(siblingFlockSizeDistribution[0:4])):
+            population = range(len(siblingFlockSizeDistribution[0:2]))
+            weights = copy.deepcopy(siblingFlockSizeDistribution[0:2])
+            for j in range(len(siblingFlockSizeDistribution[0:2])):
                 if j>0:
                     weights[j] = weights[j]*(1/4)
             flockSize = random.choices(population, weights) #adding +1 since index 0 is size 1
             flockSize = flockSize[0]+1 #adding +1 since index 0 is size 1
+            assert flockSize>=1 and flockSize<=3
             for j in range(flockSize):
                 population = range(6,19)
                 weights = copy.deepcopy(ageDistribution[6:19])
                 age = random.choices(population, weights)
                 age = age[0]
+                assert age>=6 and age<=18
                 household.append([peopleIDs,age])
                 peopleIDs = peopleIDs+1
         elif householdType == 6: #One family households with adult children (youngest child 18 years and over
@@ -739,6 +768,7 @@ def generateSocialNetworkForRegion(municipalityToGet):
             for j in range(2):
                 age = random.choices(population, weights)
                 age = age[0]
+                assert age>=45
                 household.append([peopleIDs,age])
                 peopleIDs = peopleIDs+1
         elif householdType == 7: #Two or more-family households without resident children 0-17 years
@@ -748,12 +778,14 @@ def generateSocialNetworkForRegion(municipalityToGet):
             for j in range(len(ageDistribution)):
                 if j<19: #asserting adults-only
                     weights[j] = weights[j]*0
-                if j>28: #assuming multi-family households are mostly flatshares
-                    weights[j] = weights[j]*0.1
-            numberOfPeople = random.randint(2,6) #assuming these households have somewhere between 2 and 6 people
+                if j>25: #assuming a significant portion of multi-family households are flatshares
+                    weights[j] = weights[j]*0.2
+            numberOfPeople = random.randint(3,6) #assuming these households have somewhere between 3 and 6 people
+            assert numberOfPeople>=3 and numberOfPeople<=6
             for j in range(numberOfPeople):
                 age = random.choices(population, weights)
                 age = age[0]
+                assert age>=19
                 household.append([peopleIDs,age])
                 peopleIDs = peopleIDs+1
         else:
@@ -769,6 +801,8 @@ def generateSocialNetworkForRegion(municipalityToGet):
             householdPeopleList.append([i,person[0]])
         households.append(household)
 
+
+    print("Assigning households and people to schools and kindergartens")
     #assigning households to lower secondary schools
     #schoolDistributions - [primarySchoolSizes,secondarySchoolSizes,schoolAssociations] #schoolAssocations has secondary school ID as index and primary school IDs as value
     householdsSchoolAffiliation = []
@@ -839,6 +873,7 @@ def generateSocialNetworkForRegion(municipalityToGet):
     # workAgeProbability = [[0,15,0],[16,22,30],[23,28,60],[29,65,90],[66,70,30],[71,110,0]]
 
     #generating workforce
+    print("Assigning people to workplaces")
     workforce = []
     for i in range(len(peopleAgeList)):
         personID = peopleAgeList[i][0]
@@ -880,11 +915,12 @@ def generateSocialNetworkForRegion(municipalityToGet):
             personAge = random.randint(85,89)
         elif personAgeCat == 5:
             personAge = random.randint(90,105)
-        nIndex = random.choices(population, weights)
-        nIndex = nIndex[0]
-        nursingHomes[nIndex].append(peopleIDs)
-        peopleAgeList.append([peopleIDs,personAge])
-        peopleIDs = peopleIDs+1
+        if personAgeCat != 0:
+            nIndex = random.choices(population, weights)
+            nIndex = nIndex[0]
+            nursingHomes[nIndex].append(peopleIDs)
+            peopleAgeList.append([peopleIDs,personAge])
+            peopleIDs = peopleIDs+1
 
     #setting up workplaces
     workplaces = []
@@ -1008,12 +1044,12 @@ def generateSocialNetworkForRegion(municipalityToGet):
     socialNetworkFileName = outputDirName+"socialNetwork_"+municipalityToGet+"_"+str(fileNumber)+".txt"
 
     # peopleAgeList - [[personID,age],...]
-    outputFile = open(idAndAgeFileName, "w")
+    outputFile = open(idAndAgeFileName, "w", encoding='utf8')
     for person in peopleAgeList:
         outputFile.write(str(person[0])+";"+str(person[1])+"\n")
     outputFile.close()
 
-    outputFile = open(socialNetworkFileName, "w")
+    outputFile = open(socialNetworkFileName, "w", encoding='utf8')
     
     # households - [[[personID,age],[personID,age],...],[[personID,age],[personID,age],...],...]
     for hh in households:
@@ -1129,12 +1165,12 @@ def generateSocialNetworkForRegion(municipalityToGet):
 # generateSocialNetworkForRegion("Oslo")
 
 # osloStart = time.time()
-# for i in range(3):
+# for i in range(90):
 #     generateSocialNetworkForRegion("Oslo")
 # osloEnd = time.time()
 
 # trondheimStart = time.time()
-# for i in range(3):
+# for i in range(90):
 #     generateSocialNetworkForRegion("Trondheim")
 # trondheimEnd = time.time()
 
