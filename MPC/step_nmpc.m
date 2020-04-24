@@ -22,6 +22,21 @@ u = u_opt(:,1);
 info.x_opt = x_opt;
 info.u_opt = u_opt;
 info.t = t;
+
+info.t_pred = [];
+info.x_pred = [];
+
+% Simulate forward from x0 (until t0 + T) using calculated control sequence
+% to generate x_pred with higher resolution
+for i=1:length(u_opt)-1
+    x_dot = @(t,x) dyn_fun(x,u_opt(i));
+    [t_part,x_part] = ode45(x_dot,[(i-1)*dt_u,i*dt_u],x_0);
+
+    info.t_pred = [info.t_pred, t_part'];
+    info.x_pred = [info.x_pred, x_part'];
+    
+    x_0 = x_part(end,:)';
+end
 end
 
 

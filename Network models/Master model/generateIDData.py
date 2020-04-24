@@ -3,16 +3,26 @@ import scipy.io
 import numpy
 from joblib import Parallel, delayed
 import multiprocessing
+import os
 
-#strats = [{'S': 0, 'W': 0, 'R': 1}, {'S': 1, 'W': 0, 'R': 1}, {'S': 1, 'W': 0, 'R': 2}, {'S': 1, 'W': 1, 'R': 2},{'S': 1, 'W': 1, 'R': 3}]  # Schools
-strats = [{'S': 0, 'W': 0, 'R': 1}, {'S': 0, 'W': 0, 'R': 2}, {'S': 0, 'W': 0, 'R': 3},{'S': 0, 'W': 1, 'R': 1}, {'S': 0, 'W': 1, 'R': 2}, {'S': 0, 'W': 1, 'R': 3},{'S': 1, 'W': 0, 'R': 1}, {'S': 1, 'W': 0, 'R': 2}, {'S': 1, 'W': 0, 'R': 3},{'S': 1, 'W': 1, 'R': 1}, {'S': 1, 'W': 1, 'R': 2}, {'S': 1, 'W': 1, 'R': 3}]  # All excep R=0
+strats = [{'S': 0, 'W': 0, 'R': 1}, {'S': 1, 'W': 0, 'R': 1}, {'S': 1, 'W': 0, 'R': 2}, {'S': 1, 'W': 1, 'R': 2},{'S': 1, 'W': 1, 'R': 3}]  # Schools
+#strats = [{'S': 0, 'W': 0, 'R': 1}, {'S': 0, 'W': 0, 'R': 2}, {'S': 0, 'W': 0, 'R': 3},{'S': 0, 'W': 1, 'R': 1}, {'S': 0, 'W': 1, 'R': 2}, {'S': 0, 'W': 1, 'R': 3},{'S': 1, 'W': 0, 'R': 1}, {'S': 1, 'W': 0, 'R': 2}, {'S': 1, 'W': 0, 'R': 3},{'S': 1, 'W': 1, 'R': 1}, {'S': 1, 'W': 1, 'R': 2}, {'S': 1, 'W': 1, 'R': 3}]  # All excep R=0
 
 
-def run_u(u,days):
-    layers, attrs, cliques = initModel('idAndAge_Oslo.txt', 'socialNetwork_Oslo.txt', '', baseP, [10, 3, -.75], 20)
+def run_u(u):
+    layers, attrs, cliques = initModel('idAndAge_Trondheim.txt', 'socialNetwork_Trondheim.txt', '', baseP, [10, 3, -.75], 20)
+    #layers, attrs, cliques = initModel('idAndAge_Oslo.txt', 'socialNetwork_Oslo.txt', '', baseP, [10, 3, -.75], 20)
     strat = strats[u]
     inVec = convertVector(strat)
-    stateLog, infLog, infLogByLayer, i, = fullRun(attrs, layers, cliques, strat, baseP, days - 1)
+    stateLog, infLog, infLogByLayer, i, = fullRun(attrs, layers, cliques, strat, baseP)
+    return stateLog
+
+def run_u_days(u,days):
+    layers, attrs, cliques = initModel('idAndAge_Trondheim.txt', 'socialNetwork_Trondheim.txt', '', baseP, [10, 3, -.75], 20)
+    #layers, attrs, cliques = initModel('idAndAge_Oslo.txt', 'socialNetwork_Oslo.txt', '', baseP, [10, 3, -.75], 20)
+    strat = strats[u]
+    inVec = convertVector(strat)
+    stateLog, infLog, infLogByLayer, i, = fullRun(attrs, layers, cliques, strat, baseP, days)
     return stateLog
 
 
@@ -40,11 +50,15 @@ def test_strat_multi(u,days,N):
         scipy.io.savemat(fileName, data)
 
 def run_u_and_save(u,k,days):
-    stateLog = run_u(u,days)
+    stateLog = run_u(u)
+    #stateLog = run_u_days(u,days)
     data = {}
     for comp in stateList:
         data[comp] = numpy.array([d[comp] for d in stateLog])
-        fileName = 'data_3/data_dict_test_u' + str(u) + '_run' + str(k) + '.mat'
+        dir = os.path.join(os.getcwd(),"data_trondheim_5u")
+        if not os.path.exists(dir):
+            os.mkdir(dir)
+        fileName = 'data_trondheim_5u/data_dict_test_u' + str(u) + '_run' + str(k) + '.mat'
         scipy.io.savemat(fileName, data)
 
 # Process state log
@@ -54,7 +68,8 @@ def process_logs(logs,k):
         data = {}
         for comp in stateList:
             data[comp] = numpy.array([d[comp] for d in logs[u]])
-        fileName = 'data/data_dict_test_u' + str(u) + '_run' + str(k) + '.mat'
+        
+        fileName = 'data_trondheim_u2/data_dict_test_u' + str(u) + '_run' + str(k) + '.mat'
         scipy.io.savemat(fileName, data)
 
 maxDays = 10000

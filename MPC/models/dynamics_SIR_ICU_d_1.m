@@ -1,9 +1,9 @@
-function x_dot = dynamics_SIR_ICU_d_1(x,u,d,params,beta_fun,n_pade)
+function x_dot = dynamics_SIR_ICU_d_1(x,u,dist,params,beta_fun,n_pade)
 p_S = x(1);
 p_I = x(2);
 z   = x(3:3+n_pade-1);
 
-beta = beta_fun(u) + d;
+beta = beta_fun(u) + dist;
 
 a = params.a;
 b = params.b;
