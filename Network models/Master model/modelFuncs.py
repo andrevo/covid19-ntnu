@@ -129,7 +129,7 @@ def readModel(ageFile, cliqueFile):
                 attrs[node]['cliques'].append([cName, len(layers[cName]['cliques'])-1])
 
 
-    for clique in layers['W']:
+    for clique in layers['W']['cliques']:
         clique['openRating'] = random.random()
         
     f.close()
@@ -363,11 +363,26 @@ def pooledTest(clique, attrs):
     return false
 
 
+def quarantine(node, attrs):
+    for layer in {'W', 'US', 'VS', 'BS', 'BH', 'dynR'}:
+        attrs[node]['present']['layer'] = False
+
+def dequarantine(node, attrs):
+    for layer in {'W', 'US', 'VS', 'BS', 'BH', 'dynR'}:
+        attrs[node]['present']['layer'] = True
+
+def testAndQuar(clique, attrs):
+    if pooledTest(clique, attrs):
+        quarantine(node, attrs)
+    else:
+        dequarantine(node, attrs)
+
+
 def workFrac(layers, frac):
-    for clique in layer['W']:
+    for clique in layers['W']['cliques']:
         clique['open'] = (clique['openRating'] < frac)
 
-            
+
 
 def closeGrade(school, age, attrs):
     for node in school['nodes']:
@@ -407,14 +422,14 @@ def closeGradesAbove(school, age, attrs):
             attrs[node]['present']['BH'] = False
     for node in school['nodes']:
         if attrs[node]['age'] > 19:
-            if age < 15:
-                attrs[node]['present']['VS'] = False
-            if age < 12:
-                attrs[node]['present']['US'] = False
-            if age < 5:
-                attrs[node]['present']['BS'] = False
-            if age < 0:
-                attrs[node]['present']['BH'] = False
+            if age > 15:
+                attrs[node]['present']['VS'] = True
+            if age > 12:
+                attrs[node]['present']['US'] = True
+            if age > 5:
+                attrs[node]['present']['BS'] = True
+            if age > 0:
+                attrs[node]['present']['BH'] = True
 
             
 
@@ -426,9 +441,6 @@ def openAllGrades(school, attrs):
         attrs[node]['present']['BH'] = True
 
 
-def quarantine(node, attrs):
-    for layer in {'W', 'US', 'VS', 'BS', 'BH', 'dynR'}:
-        attrs[node]['present']['layer'] = False
         
 
 
@@ -503,7 +515,7 @@ def setStrategyNew(inputVector, probs, layers, attrs):
     layers['HH']['open'] = True
     layers['R']['open'] = True
     
-    qFac = [0.1, 0.2, 0.5, 1]
+    qFac = [0.1, 0.25, 0.5, 1]
 
     
     newP['inf']['R'] = qFac[inputVector['R']]*probs['inf']['R']
@@ -569,6 +581,38 @@ def timedRun(attrs, layers, strat, baseP, curDay, runDays):
         infLog.append(dailyInfs)
         infLogByLayer.append(linfs)
     
+    return stateLog, infLog, infLogByLayer, i
+
+
+def initRun(attrs, layers, strat, baseP, threshold):
+    
+    cont = 1
+    i = 0
+    #inVec = convertVector(strat)
+    p = setStrategyNew(strat, baseP, layers, attrs)
+
+    stateLog = []
+    infLog = []
+    infLogByLayer = []
+    
+    while cont:
+        i+=1
+        sys.stdout.flush()
+        sys.stdout.write(str(i)+'\r')
+        
+        dailyInfs = 0
+    
+        cont, linfs, dailyInfs = systemDay(layers, attrs, p, i)
+
+
+        stateLog.append(countState(attrs, stateList))
+        if stateLog[-1]['Is'] > threshold:
+            cont = False
+            
+        infLog.append(dailyInfs)
+        infLogByLayer.append(linfs)
+        
+        
     return stateLog, infLog, infLogByLayer, i
 
 
