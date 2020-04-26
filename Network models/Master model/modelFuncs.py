@@ -568,7 +568,7 @@ def timedRun(attrs, layers, strat, baseP, curDay, runDays):
     infLogByLayer = []
     endDay = curDay+runDays
     
-    while i < endDay:
+    while cont and (i < endDay):
         i+=1
         sys.stdout.flush()
         sys.stdout.write(str(i)+'\r')
