@@ -2,6 +2,7 @@ import sys
 import random
 import numpy as np
 import copy
+import time
 #import networkx as nx
 from InitializeParams import *
 
@@ -16,7 +17,7 @@ def roundAge(age):
 
 #Initialize full model
 def initModel(ageFile, cliqueFile, riskTableFile, baseP, dynParams, n):
-    layers, attrs, cliques = readModel(ageFile, cliqueFile)
+    layers, attrs = readModel(ageFile, cliqueFile)
     #setRisk(ageFile, riskTableFile, attrs)
     genActivity(attrs, dynParams)
 
@@ -24,7 +25,7 @@ def initModel(ageFile, cliqueFile, riskTableFile, baseP, dynParams, n):
     genBlankState(attrs)
     seedState(attrs, n)
 
-    return layers, attrs, cliques
+    return layers, attrs
     
 #Sets binary risk from file
 
@@ -81,28 +82,27 @@ def readModel(ageFile, cliqueFile):
 
     f.close()
 
-    layers = ['BH', 'BS', 'US', 'VS', 'W', 'HH', 'NH', 'R']
+    layers = {'BH':{}, 'BS':{}, 'US':{}, 'VS':{}, 'W':{}, 'HH':{}, 'NH':{}, 'R':{}}
 
     for node in attrs:
         attrs[node]['cliques'] = []
         attrs[node]['state'] = 'S'
-        attrs[node]['aware'] = False
-        attrs[node]['markForSymptoms'] = False
+        attrs[node]['quarantine'] = False
         attrs[node]['sick'] = False
         attrs[node]['inNursing'] = False
-        attrs[node]['spreading'] = {}
+        attrs[node]['present'] = {}
         for layer in layers:
-            attrs[node]['spreading'][layer] = False
+            attrs[node]['present'][layer] = True
     
         
     translations = {'Kindergarten': 'BH', 'PrimarySchool': 'BS', 'Household':'HH', 'SecondarySchool': 'US', 'UpperSecondarySchool': 'VS', 'Workplace': 'W', 'NursingHome':'NH'}
 
 
-    cliques = {}
 
     
     for layer in layers:
-        cliques[layer] = []    
+        layers[layer]['cliques'] = []
+        layers[layer]['open'] = True
 
     f = open(cliqueFile)
     for line in f:
@@ -111,70 +111,29 @@ def readModel(ageFile, cliqueFile):
 
         
         if (splitLine[1] != '') & (splitLine[0].split('_')[0] != 'Commuters'):
-            clique = []
+            clique = {}
+            clique['open'] = True
+            clique['nodes'] = []
             for i in splitLine[1:]:
                 if unicode(i, 'utf-8').isnumeric():
-                    clique.append(i)
-
+                    clique['nodes'].append(i)
             
             cName = translations[splitLine[0]]
             if cName == 'NH':
-                for node in clique:
+                for node in clique['nodes']:
                     if attrs[node]['age'] > 70:
                         attrs[node]['inNursing'] = True
                 
-            cliques[cName].append(clique)
-            for node in clique:
-                attrs[node]['cliques'].append([cName, len(cliques[cName])-1])
+            layers[cName]['cliques'].append(clique)
+            for node in clique['nodes']:
+                attrs[node]['cliques'].append([cName, len(layers[cName]['cliques'])-1])
 
         
     f.close()
-    cliques['R'] = [attrs.keys()]
-    return layers, attrs, cliques
+    layers['R']['cliques'] = [attrs.keys()]
+    return layers, attrs
 
 
-
-
-
-
-
-
-def filterCliqueAge(clique, age, cutoff, mode):
-    newClique = []
-    for node in clique:
-        if mode == 'highPass':
-            if attrs[node]['age'] > cutoff:
-                newClique.append(node)
-        if mode == 'lowPass':
-            if attrs[node]['age'] < cutoff:
-                newClique.append(node)
-    return newClique
-
-
-
-def filterCliqueRisk(clique, atRisk, mode):
-    newClique = []
-    for node in clique:
-        if mode == 'highPass':
-            if atRisk[node]:
-                newClique.append(node)
-        if mode == 'lowPass':
-            if not atRisk[node]:
-                newClique.append(node)
-    return newClique    
-
-
-
-def filterCliqueAttribute(clique, attrs, attrID, cutoff, mode):
-    newClique = []
-    for node in clique:
-        if mode == 'highPass':
-            if attrs[node][attrID] > cutoff:
-                newClique.append(node)
-        if mode == 'lowPass':
-            if attrs[node][attrID] < cutoff:
-                newClique.append(node)
-    return newClique
 
 
 def infectNode(attrs, node, anc, layer, day):
@@ -194,7 +153,7 @@ def cliqueDay(clique, attrs, layer, p, day):
     for node in clique:
         if attrs[node]['state'] == 'S':
             susClique.append(node)
-        if attrs[node]['spreading'][layer]:
+        if attrs[node]['present'][layer] & attrs[node]['sick']:
             infClique.append(node)
     infected = len(infClique)
     susceptible = len(susClique)
@@ -256,8 +215,8 @@ def recover(node, attrs, p, day):
     attrs[node]['state'] = 'R'
     attrs[node]['lastDay'] = day
     attrs[node]['sick'] = False
-    for layer in attrs[node]['spreading']:
-        attrs[node]['spreading'][layer] = False
+    for layer in attrs[node]['present']:
+        attrs[node]['present'][layer] = True
         
     if random.random() < p['NI']:
         attrs[node]['nextState'] = 'S'
@@ -268,25 +227,22 @@ def turnAsymp(node, attrs, p, day):
     attrs[node]['nextState'] = 'R'
     attrs[node]['nextDay'] = day+1+np.random.poisson(dur['AS-R'])
     attrs[node]['sick'] = True
-    for layer in attrs[node]['spreading']:
-        attrs[node]['spreading'][layer] = True
+
     
 def turnPresymp(node, attrs, p, day):
     attrs[node]['state'] = 'Ip'
     attrs[node]['nextState'] = 'Is'
     attrs[node]['nextDay'] = day+1+np.random.poisson(dur['PS-I'])
     attrs[node]['sick'] = True
-    for layer in attrs[node]['spreading']:
-        attrs[node]['spreading'][layer] = True
+
 
     
 def activateSymptoms(node, attrs, p, day):
     attrs[node]['state'] = 'Is'
     attrs[node]['lastDay'] = day
     for layer in ['BH', 'BS', 'US', 'VS', 'W', 'NH', 'R']:
-        attrs[node]['spreading'][layer] = False
+        attrs[node]['present'][layer] = False
         
-    attrs[node]['spreading'] 
     if attrs[node]['inNursing']:
         if random.random() < p['NHDage'][attrs[node]['decade']]:
             attrs[node]['nextState'] = 'D'
@@ -308,7 +264,7 @@ def hospitalize(node, attrs, p, day):
     attrs[node]['state'] = 'H'
     attrs[node]['lastDay'] = day
     for layer in ['HH', 'NH']:
-        attrs[node]['spreading'][layer] = False 
+        attrs[node]['present'][layer] = False 
 
 
 
@@ -344,8 +300,8 @@ def die(node, attrs, p, day):
     attrs[node]['nextDay'] = -1
     attrs[node]['nextState'] = ''
     attrs[node]['sick'] = False
-    for layer in attrs[node]['spreading']:
-        attrs[node]['spreading'][layer] = False
+    for layer in attrs[node]['present']:
+        attrs[node]['present'][layer] = False
 
 def stateFunction(state):
     funcs = {
@@ -364,23 +320,25 @@ def ifSwitch(node, attrs, p, day):
     
 
 #Daily pulse
-def systemDay(cliques, attrs, openLayer, p, day):
+def systemDay(layers, attrs, p, day):
 
     cont = 0
 
     lInfs = {}
     dailyInfs = 0
-    for layer in cliques:
+    for layer in layers:
         lInfs[layer] = 0
 
-        if (openLayer[layer] & (layer != 'R')): #i > rel[layer]:
-            for clique in cliques[layer]:
-                infs = cliqueDay(clique, attrs, layer, p['inf'][layer], day)
-                lInfs[layer] += len(infs)
-                dailyInfs += len(infs)
+        if (layers[layer]['open']) & (layer != 'R'): #i > rel[layer]:
+            for clique in layers[layer]['cliques']:
+                if clique['open']:
+                    infs = cliqueDay(clique['nodes'], attrs, layer, p['inf'][layer], day)
+                    lInfs[layer] += len(infs)
+                    dailyInfs += len(infs)
         
-    lInfs['Rp'] = dynRandomLayer(attrs, cliques['R'][0], p['inf']['dynR'], day)
-                
+    lInfs['Rp'] = dynRandomLayer(attrs, layers['R']['cliques'][0], p['inf']['dynR'], day)
+    dailyInfs += lInfs['Rp']
+    
         
     for node in attrs:
         if (attrs[node]['sick'] | (attrs[node]['state'] == 'E')):
@@ -388,6 +346,74 @@ def systemDay(cliques, attrs, openLayer, p, day):
             #ifSwitch(node, attrs, p, day)
             cont = True
     return cont, lInfs, dailyInfs
+
+
+def test(node, attrs):
+    return attrs[node]['state'] in {'Ip', 'Ia', 'Is'}
+
+
+def pooledTest(clique, attrs):
+    
+    for node in clique['nodes']:
+        if test(node, attrs):
+            return true
+    return false
+
+
+def closeWork(works, frac):
+    for clique in works:
+        if random.random() < frac:
+            clique['open'] = False
+
+
+def closeGrade(school, age, attrs):
+    for node in school['nodes']:
+        if attrs[node]['age'] == age:
+            attrs[node]['present']['VS'] = False
+            attrs[node]['present']['BS'] = False
+            attrs[node]['present']['US'] = False
+            attrs[node]['present']['BH'] = False
+
+                
+
+            
+def closeGradesBelow(school, age, attrs):
+    for node in school['nodes']:
+        if attrs[node]['age'] < age:
+            attrs[node]['present']['VS'] = False
+            attrs[node]['present']['BS'] = False
+            attrs[node]['present']['US'] = False
+            attrs[node]['present']['BH'] = False
+
+                
+            
+def closeGradesAbove(school, age, attrs):
+    for node in school['nodes']:
+        if attrs[node]['age'] > age:
+            attrs[node]['present']['VS'] = False
+            attrs[node]['present']['BS'] = False
+            attrs[node]['present']['US'] = False
+            attrs[node]['present']['BH'] = False
+
+            
+
+def openAllGrades(school, attrs):
+    for node in school['nodes']:
+        attrs[node]['present']['VS'] = True
+        attrs[node]['present']['BS'] = True
+        attrs[node]['present']['US'] = True
+        attrs[node]['present']['BH'] = True
+
+
+def quarantine(node, attrs):
+    for layer in {'W', 'US', 'VS', 'BS', 'BH', 'dynR'}:
+        attrs[node]['present']['layer'] = False
+        
+
+
+
+
+    
 
 
 def countState(attrs, stateList):
@@ -418,36 +444,64 @@ def convertVector(inputVector):
     return newVec
 
 
-def setStrategy(inputVector, probs, layers):
+def setStrategy(inputVector, probs, layers, attrs):
 
     newP = copy.deepcopy(probs)
-    isOpen = {}
     for layer in inputVector:
-        isOpen[layer] = bool(inputVector[layer])
-        
-    isOpen['NH'] = True
-    isOpen['HH'] = True
+        layers[layer]['open'] = bool(inputVector[layer])
+    
+    layers['NH']['open'] = True
+    layers['HH']['open'] = True
+    layers['R']['open'] = True
+    
     qFac = [0.1, 0.2, 0.5, 1]
-    isOpen['R'] = True
 
     
     newP['inf']['R'] = qFac[inputVector['R']]*probs['inf']['R']
     newP['inf']['dynR'] = qFac[inputVector['R']]*probs['inf']['dynR']
     
-    return isOpen, newP
+    return newP
+
+def setStrategyNew(inputVector, probs, layers, attrs):
+
+    newP = copy.deepcopy(probs)
+    layers['W']['open'] = bool(inputVector['W'])
+    layers['R']['open'] = bool(inputVector['R'])
+
+    
+    for layer in ['BH', 'BS', 'US', 'VS']:
+        layers[layer]['open'] = bool(inputVector['S'])
+
+        for school in layers[layer]['cliques']:
+            openAllGrades(school, attrs)
+            closeGradesAbove(school, inputVector['S'], attrs)
+        
+    layers['NH']['open'] = True
+    layers['HH']['open'] = True
+    layers['R']['open'] = True
+    
+    qFac = [0.1, 0.2, 0.5, 1]
+
+    
+    newP['inf']['R'] = qFac[inputVector['R']]*probs['inf']['R']
+    newP['inf']['dynR'] = qFac[inputVector['R']]*probs['inf']['dynR']
+    
+    return newP
 
 
-def fullRun(seedAttrs, layers, cliques, strat, baseP):
+
+def fullRun(seedAttrs, layers, strat, baseP):
     
     cont = 1
     i = 0
-    inVec = convertVector(strat)
-    openLayers, p = setStrategy(inVec, baseP, layers)
 
     stateLog = []
     infLog = []
     infLogByLayer = []
     attrs = copy.copy(seedAttrs)
+    
+    inVec = convertVector(strat)        
+    p = setStrategy(inVec, baseP, layers, attrs)
 
     stateLog.append(countState(attrs, stateList))
     
@@ -460,19 +514,19 @@ def fullRun(seedAttrs, layers, cliques, strat, baseP):
 
         dailyInfs = 0
     
-        cont, linfs, dailyInfs = systemDay(cliques, attrs, openLayers, p, i)
+        cont, linfs, dailyInfs = systemDay(layers, attrs, p, i)
         stateLog.append(countState(attrs, stateList))
         infLog.append(dailyInfs)
         infLogByLayer.append(linfs)
     
     return stateLog, infLog, infLogByLayer, i
 
-def timedRun(attrs, layers, cliques, strat, baseP, curDay, runDays):
+def timedRun(attrs, layers, strat, baseP, curDay, runDays):
     
     cont = 1
     i = curDay
-    inVec = convertVector(strat)
-    openLayers, p = setStrategy(inVec, baseP, layers)
+    #inVec = convertVector(strat)
+    p = setStrategyNew(strat, baseP, layers, attrs)
 
     stateLog = []
     infLog = []
@@ -486,7 +540,7 @@ def timedRun(attrs, layers, cliques, strat, baseP, curDay, runDays):
         
         dailyInfs = 0
     
-        cont, linfs, dailyInfs = systemDay(cliques, attrs, openLayers, p, i)
+        cont, linfs, dailyInfs = systemDay(layers, attrs, p, i)
 
         stateLog.append(countState(attrs, stateList))
         infLog.append(dailyInfs)
@@ -496,12 +550,12 @@ def timedRun(attrs, layers, cliques, strat, baseP, curDay, runDays):
 
 
 
-def fullRunControl(seedAttrs, layers, cliques, strat, baseP):
+def fullRunControl(seedAttrs, layers, strat, baseP):
     
     cont = 1
     i = 0
     inVec = convertVector(strat)
-    openLayers, p = setStrategy(inVec, baseP, layers)
+    p = setStrategy(inVec, baseP, layers)
 
     stateLog = []
     infLog = []
@@ -515,7 +569,7 @@ def fullRunControl(seedAttrs, layers, cliques, strat, baseP):
 
         dailyInfs = 0
     
-        cont, linfs, dailyInfs = systemDay(cliques, attrs, openLayers, p, i)
+        cont, linfs, dailyInfs = systemDay(layers, attrs, p, i)
         stateLog.append(countState(attrs, stateList))
 
         infLog.append(dailyInfs)
@@ -536,21 +590,21 @@ def findR(stateLog):
     return 0
 
 
-def analyticalR(cliques, openLayers, attrs, p):
-    expInfs = [0]*len(attrs)
-    for layer in cliques:
+# def analyticalR(layers, openLayers, attrs, p):
+#     expInfs = [0]*len(attrs)
+#     for layer in layers:
             
-        if openLayers[layer]:
-            for clique in cliques[layer]:
-                for node in clique:
+#         if openLayers[layer]:
+#             for clique in cliques[layer]:
+#                 for node in clique:
                         
-                    expInfs[node] += p['inf'][layer]*len(clique)
+#                     expInfs[node] += p['inf'][layer]*len(clique)
 
-    rByNode = []
+#     rByNode = []
 
-    for node in expInfs:
-        rByNode.append(node/p['rec'])
-    return np.mean(rByNode)
+#     for node in expInfs:
+#         rByNode.append(node/p['rec'])
+#     return np.mean(rByNode)
 
 
 def directR(attrs):
@@ -577,41 +631,25 @@ def genActivity(attrs, dynParams):
         else:
             attrs[node]['act'] = int(max(np.random.normal(mode, var), 1))
 
-#Generate random cliques according to power law
-def genRandomClique(seq, ub):
-    rs = pow(random.random(), 0.5)
-    cSize = min(1+int(1/rs), len(seq), ub)
-    clique = random.sample(seq, cSize)
-    return clique
-
-#Generate random cliques centered around nodes and infects them
-def randomLayer(attrs, p, day):
-    for node in attrs:
-        n = random.randint(1, attrs[node]['act'])
-    clique = random.sample(attrs, n)
-    newInfs = cliqueDay(clique, attrs, 'R', p, day)
-    return newInfs
-
 
 #Node-based power law spread on a random layer
 def dynRandomLayer(attrs, layer, p, day):
     infs = 0
     for node in layer:
-        if attrs[node]['spreading']['R']:
+        if attrs[node]['present']['R'] & attrs[node]['sick']:
             conns = min(random.randint(0, attrs[node]['act']), len(layer))
             for nNode in random.sample(layer, conns):
-                #print node, nNode, attrs[nNode]['state']
-                if attrs[nNode]['state'] == 'S':
+                if attrs[nNode]['present']['R'] & (attrs[nNode]['state'] == 'S'):
                     if random.random() < p:
                         infectNode(attrs, nNode, node, 'dynR', day)
                         infs += 1
-                #print node, nNode, attrs[nNode]['state']
+
                 
-        if attrs[node]['state'] == 'S':
+        if attrs[node]['present']['R'] & (attrs[node]['state'] == 'S'):
             conns = min(random.randint(0, attrs[node]['act']), len(layer))
             iNeighbors = 0
             for nNode in random.sample(layer, conns):
-                if attrs[nNode]['spreading']['R']:
+                if attrs[nNode]['present']['R'] & attrs[nNode]['sick']:
                     iNeighbors += 1
             if random.random() < 1-pow(1-p, iNeighbors):
                 infectNode(attrs, node, nNode, 'dynR', day)
@@ -625,6 +663,7 @@ def dynRandomLayer(attrs, layer, p, day):
 def genBlankState(attrs):
     for node in attrs:
         attrs[node]['state'] = 'S'
+        attrs[node]['sick'] = False
         attrs[node]['infAnc'] = -1
         attrs[node]['infDesc'] = []
 
