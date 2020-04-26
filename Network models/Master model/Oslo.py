@@ -3,6 +3,7 @@ from InitializeParams import *
 
 #layers, attrs, cliques = readModel('idAndAge_Oslo.txt', 'socialNetwork_Oslo.txt')
 layers, attrs = initModel('idAndAge_Oslo.txt', 'socialNetwork_Oslo.txt', '', baseP, [10, 3, -.75], 20)
+
 #genBlankState(attrs)
 #seedState(attrs, 20)
 

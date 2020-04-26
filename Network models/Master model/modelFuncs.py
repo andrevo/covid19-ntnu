@@ -128,6 +128,9 @@ def readModel(ageFile, cliqueFile):
             for node in clique['nodes']:
                 attrs[node]['cliques'].append([cName, len(layers[cName]['cliques'])-1])
 
+
+    for clique in layers['W']:
+        clique['openRating'] = random.random()
         
     f.close()
     layers['R']['cliques'] = [attrs.keys()]
@@ -360,11 +363,11 @@ def pooledTest(clique, attrs):
     return false
 
 
-def closeWork(works, frac):
-    for clique in works:
-        if random.random() < frac:
-            clique['open'] = False
+def workFrac(layers, frac):
+    for clique in layer['W']:
+        clique['open'] = (clique['openRating'] < frac)
 
+            
 
 def closeGrade(school, age, attrs):
     for node in school['nodes']:
@@ -384,8 +387,16 @@ def closeGradesBelow(school, age, attrs):
             attrs[node]['present']['BS'] = False
             attrs[node]['present']['US'] = False
             attrs[node]['present']['BH'] = False
-
-                
+    for node in school['nodes']:
+        if attrs[node]['age'] > 19:
+            if age > 15:
+                attrs[node]['present']['VS'] = False
+            if age > 12:
+                attrs[node]['present']['US'] = False
+            if age > 5:
+                attrs[node]['present']['BS'] = False
+            if age > 0:
+                attrs[node]['present']['BH'] = False
             
 def closeGradesAbove(school, age, attrs):
     for node in school['nodes']:
@@ -394,6 +405,16 @@ def closeGradesAbove(school, age, attrs):
             attrs[node]['present']['BS'] = False
             attrs[node]['present']['US'] = False
             attrs[node]['present']['BH'] = False
+    for node in school['nodes']:
+        if attrs[node]['age'] > 19:
+            if age < 15:
+                attrs[node]['present']['VS'] = False
+            if age < 12:
+                attrs[node]['present']['US'] = False
+            if age < 5:
+                attrs[node]['present']['BS'] = False
+            if age < 0:
+                attrs[node]['present']['BH'] = False
 
             
 
@@ -456,7 +477,7 @@ def setStrategy(inputVector, probs, layers, attrs):
     
     qFac = [0.1, 0.2, 0.5, 1]
 
-    
+             
     newP['inf']['R'] = qFac[inputVector['R']]*probs['inf']['R']
     newP['inf']['dynR'] = qFac[inputVector['R']]*probs['inf']['dynR']
     
@@ -475,7 +496,9 @@ def setStrategyNew(inputVector, probs, layers, attrs):
         for school in layers[layer]['cliques']:
             openAllGrades(school, attrs)
             closeGradesAbove(school, inputVector['S'], attrs)
-        
+
+    workFrac(layers, float(inputVector['W']))
+
     layers['NH']['open'] = True
     layers['HH']['open'] = True
     layers['R']['open'] = True
@@ -671,3 +694,13 @@ def seedState(attrs, n):
     for node in random.sample(attrs.keys(), n):
         attrs[node]['state'] = 'E'
         attrs[node]['sick'] = True
+
+
+def seedStateNew(attrs, n):
+    for node in random.sample(attrs.keys(), n):
+        if random.random() < 0.5:
+            attrs[node]['state'] = 'Ip'
+            attrs[node]['sick'] = True
+        else:
+            attrs[node]['state'] = 'Ia'
+            attrs[node]['sick'] = True
