@@ -684,8 +684,8 @@ def fullRunControl(seedAttrs, layers, strat, baseP):
     
     while cont:
         i+=1
-        if i%10 == 0:
-            print i
+        sys.stdout.flush()
+        sys.stdout.write(str(i)+'\r')
 
         dailyInfs = 0
     
