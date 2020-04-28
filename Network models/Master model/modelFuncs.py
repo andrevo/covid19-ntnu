@@ -355,29 +355,64 @@ def test(node, attrs):
     return attrs[node]['state'] in {'Ip', 'Ia', 'Is'}
 
 
-def pooledTest(clique, attrs):
-    
+def pooledTest(clique, attrs):    
     for node in clique['nodes']:
         if test(node, attrs):
-            return true
-    return false
+            return True
+    return False
 
 
-def quarantine(node, attrs):
-    for layer in {'W', 'US', 'VS', 'BS', 'BH', 'dynR'}:
-        attrs[node]['present']['layer'] = False
+def quarNode(node, attrs):
+    for layer in {'W', 'US', 'VS', 'BS', 'BH', 'R'}:
+        attrs[node]['present'][layer] = False
 
-def dequarantine(node, attrs):
-    for layer in {'W', 'US', 'VS', 'BS', 'BH', 'dynR'}:
-        attrs[node]['present']['layer'] = True
+def dequarNode(node, attrs):
+    for layer in {'W', 'US', 'VS', 'BS', 'BH', 'R'}:
+        attrs[node]['present'][layer] = True
+
+
+def quarClique(clique, attrs):
+    for node in clique['nodes']:
+        quarNode(node, attrs)
+
+def dequarClique(clique, attrs):
+    for node in clique['nodes']:
+        dequarNode(node, attrs)
+
 
 def testAndQuar(clique, attrs):
     if pooledTest(clique, attrs):
-        quarantine(node, attrs)
+        quarClique(clique, attrs)
     else:
-        dequarantine(node, attrs)
+        dequarClique(clique, attrs)
+
+def genTestPoolsRandomHH(layers, attrs, capacity):
+
+    return random.sample(layers['HH']['cliques'], capacity)
+
+def genTestPoolsHHaboveSize(layers, attrs, capacity, size):
+
+    i = 0
+    validHHs = []
+    for hh in layers['HH']['cliques']:
+        if len(hh['nodes']) > size:
+            validHHs.append(hh)
+
+    return random.sample(validHHs, capacity)
+    
+def testTargeted(layers, attrs, capacity, size):
+    pool = genTestPoolsHHaboveSize(layers, attrs, capacity, size)
+    for clique in pool:
+        testAndQuar(clique, attrs)
 
 
+        
+        
+    
+    
+        
+    
+        
 def workFrac(layers, frac):
     for clique in layers['W']['cliques']:
         clique['open'] = (clique['openRating'] < frac)
@@ -477,25 +512,9 @@ def convertVector(inputVector):
     return newVec
 
 
+
+
 def setStrategy(inputVector, probs, layers, attrs):
-
-    newP = copy.deepcopy(probs)
-    for layer in inputVector:
-        layers[layer]['open'] = bool(inputVector[layer])
-    
-    layers['NH']['open'] = True
-    layers['HH']['open'] = True
-    layers['R']['open'] = True
-    
-    qFac = [0.1, 0.2, 0.5, 1]
-
-             
-    newP['inf']['R'] = qFac[inputVector['R']]*probs['inf']['R']
-    newP['inf']['dynR'] = qFac[inputVector['R']]*probs['inf']['dynR']
-    
-    return newP
-
-def setStrategyNew(inputVector, probs, layers, attrs):
 
     newP = copy.deepcopy(probs)
     layers['W']['open'] = bool(inputVector['W'])
@@ -561,7 +580,7 @@ def timedRun(attrs, layers, strat, baseP, curDay, runDays):
     cont = 1
     i = curDay
     #inVec = convertVector(strat)
-    p = setStrategyNew(strat, baseP, layers, attrs)
+    p = setStrategy(strat, baseP, layers, attrs)
 
     stateLog = []
     infLog = []
@@ -583,13 +602,47 @@ def timedRun(attrs, layers, strat, baseP, curDay, runDays):
     
     return stateLog, infLog, infLogByLayer, i
 
+def timedRunTesting(attrs, layers, strat, baseP, curDay, runDays, testPools):
+    
+    cont = 1
+    i = curDay
+    #inVec = convertVector(strat)
+    p = setStrategy(strat, baseP, layers, attrs)
+
+    stateLog = []
+    infLog = []
+    infLogByLayer = []
+    endDay = curDay+runDays
+    #testPools = genTestPoolsRandomHH(layers, attrs, 20000)
+    #testPools = genTestPoolsHHaboveSize(layers, attrs, 20000, 4)
+    #testPools = [[node] for node in random.sample(attrs, 20000)]
+    
+    
+    while i < endDay:
+        i+=1
+        sys.stdout.flush()
+        sys.stdout.write(str(i)+'\r')
+        
+        dailyInfs = 0
+        
+        cont, linfs, dailyInfs = systemDay(layers, attrs, p, i)
+        if i % 7 == 0:
+            for pool in testPools:
+                testAndQuar(pool, attrs)
+
+        stateLog.append(countState(attrs, stateList))
+        infLog.append(dailyInfs)
+        infLogByLayer.append(linfs)
+    
+    return stateLog, infLog, infLogByLayer, i
+
 
 def initRun(attrs, layers, strat, baseP, threshold):
     
     cont = 1
     i = 0
     #inVec = convertVector(strat)
-    p = setStrategyNew(strat, baseP, layers, attrs)
+    p = setStrategy(strat, baseP, layers, attrs)
 
     stateLog = []
     infLog = []
@@ -708,7 +761,7 @@ def dynRandomLayer(attrs, layer, p, day):
             for nNode in random.sample(layer, conns):
                 if attrs[nNode]['present']['R'] & (attrs[nNode]['state'] == 'S'):
                     if random.random() < p:
-                        infectNode(attrs, nNode, node, 'dynR', day)
+                        infectNode(attrs, nNode, node, 'R', day)
                         infs += 1
 
                 
@@ -719,7 +772,7 @@ def dynRandomLayer(attrs, layer, p, day):
                 if attrs[nNode]['present']['R'] & attrs[nNode]['sick']:
                     iNeighbors += 1
             if random.random() < 1-pow(1-p, iNeighbors):
-                infectNode(attrs, node, nNode, 'dynR', day)
+                infectNode(attrs, node, nNode, 'R', day)
                 infs += 1
 
 

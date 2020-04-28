@@ -11,6 +11,6 @@ strat = {'S': 10, 'W': 1, 'R': 3}
 inVec = convertVector(strat)
 
 #stateLog, infLog, infLogByLayer, i, = fullRun(attrs, layers, strat, baseP)
-stateLog, infLog, infLogByLayer, i, = timedRun(attrs, layers, strat, baseP, 0, 20)
+stateLog, infLog, infLogByLayer, i, = timedRun(attrs, layers, strat, baseP, 0, 5)
 
 
