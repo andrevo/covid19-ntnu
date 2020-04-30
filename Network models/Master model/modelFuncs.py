@@ -115,8 +115,7 @@ def readModel(ageFile, cliqueFile):
             clique['open'] = True
             clique['nodes'] = []
             for i in splitLine[1:]:
-                if unicode(i, 'utf-8').isnumeric():
-                #if i.isnumeric():
+                if i.isdigit():
                     clique['nodes'].append(i)
             
             cName = translations[splitLine[0]]
@@ -134,7 +133,7 @@ def readModel(ageFile, cliqueFile):
         clique['openRating'] = random.random()
         
     f.close()
-    layers['R']['cliques'] = [attrs.keys()]
+    layers['R']['cliques'] = [list(attrs.keys())]
     return layers, attrs
 
 
