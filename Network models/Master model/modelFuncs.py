@@ -116,6 +116,7 @@ def readModel(ageFile, cliqueFile):
             clique['nodes'] = []
             for i in splitLine[1:]:
                 if unicode(i, 'utf-8').isnumeric():
+                #if i.isnumeric():
                     clique['nodes'].append(i)
             
             cName = translations[splitLine[0]]
@@ -361,6 +362,13 @@ def pooledTest(clique, attrs):
             return True
     return False
 
+def pooledTestAdultOnly(clique, attrs):
+    for node in clique['nodes']:
+        if attrs[node]['age'] > 18:
+            if test(node, attrs):
+                return True
+    return False
+
 
 def quarNode(node, attrs):
     for layer in {'W', 'US', 'VS', 'BS', 'BH', 'R'}:
@@ -386,6 +394,13 @@ def testAndQuar(clique, attrs):
     else:
         dequarClique(clique, attrs)
 
+def testAndQuarAdults(clique, attrs):
+    if pooledTestAdultOnly(clique, attrs):
+        quarClique(clique, attrs)
+    else:
+        dequarClique(clique, attrs)
+
+        
 def genTestPoolsRandomHH(layers, attrs, capacity):
 
     return random.sample(layers['HH']['cliques'], capacity)
@@ -534,7 +549,7 @@ def setStrategy(inputVector, probs, layers, attrs):
     layers['HH']['open'] = True
     layers['R']['open'] = True
     
-    qFac = [0.1, 0.25, 0.5, 1]
+    qFac = [0.1, 0.35, 0.5, 1]
 
     
     newP['inf']['R'] = qFac[inputVector['R']]*probs['inf']['R']
@@ -602,7 +617,7 @@ def timedRun(attrs, layers, strat, baseP, curDay, runDays):
     
     return stateLog, infLog, infLogByLayer, i
 
-def timedRunTesting(attrs, layers, strat, baseP, curDay, runDays, testPools):
+def timedRunTesting(attrs, layers, strat, baseP, curDay, runDays, testPools, mode='All'):
     
     cont = 1
     i = curDay
@@ -627,8 +642,13 @@ def timedRunTesting(attrs, layers, strat, baseP, curDay, runDays, testPools):
         
         cont, linfs, dailyInfs = systemDay(layers, attrs, p, i)
         if i % 7 == 0:
-            for pool in testPools:
-                testAndQuar(pool, attrs)
+            if mode == 'All':
+                for pool in testPools:
+                    testAndQuar(pool, attrs)
+            if mode == 'Adults':
+                for pool in testPools:
+                    testAndQuarAdults(pool, attrs)
+            
 
         stateLog.append(countState(attrs, stateList))
         infLog.append(dailyInfs)
