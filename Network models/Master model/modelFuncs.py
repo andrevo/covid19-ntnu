@@ -350,7 +350,7 @@ def systemDay(layers, attrs, p, day, testRules={}):
             cont = True
 
     if testRules:
-        if i % 7 == 0:
+        if day % 7 == 0:
             if testRules['mode'] == 'FullHH':
                 for pool in testRules['pools']:
                     testAndQuar(pool, attrs)
@@ -536,7 +536,18 @@ def convertVector(inputVector):
     return newVec
 
 
-
+def setTestRules(testing, layers, attrs):
+    testRules = {}
+    if testing:
+        if testing['testStrat'] in ['TPHT', 'TPHTA']:
+            testRules['pools'] = genTestPoolsHHaboveSize(layers, attrs, testing['capacity'], testing['cutoff'])
+        if testing['testStrat'] in ['RPHT']:
+            testRules['pools'] = genTestPoolsRandomHH(layers, attrs, testing['capacity'])
+        if testing['testStrat'] in ['TPHTA']:
+            testRules['mode'] = 'Adults'
+        if testing['testStrat'] in ['TPHT', 'RPHT']:
+            testRules['mode'] = 'FullHH'
+    return testRules
 
 def setStrategy(inputVector, probs, layers, attrs):
 
@@ -617,19 +628,8 @@ def timedRun(attrs, layers, strat, baseP, curDay, runDays, testing={}):
     infLogByLayer = []
     endDay = curDay+runDays
 
-    testRules = {}
-    if testing:
-        if testing['testStrat'] in ['TPHT, TPHTA']:
-            testRules['pools'] = genTestPoolHHaboveSize(layers, attrs, testing['capacity'], testing['cutoff'])
-        if testing['testStrat'] in ['RPHT']:
-            testRules['pools'] = genTestPoolRandom(layers, attrs, testing['capacity'])
-        if testing['testStrat'] in ['TPHTA']:
-            testRules['mode'] = 'Adults'
-        if testing['testStrat'] in ['TPHT', 'RPHT']:
-            testRules['mode'] = 'FullHH'
+    testRules = setTestRules(testing, layers, attrs)
                    
-            
-    
     while i < endDay:
         i+=1
         sys.stdout.flush()
@@ -685,6 +685,8 @@ def initRun(attrs, layers, strat, baseP, threshold):
     i = 0
     #inVec = convertVector(strat)
     p = setStrategy(strat, baseP, layers, attrs)
+
+
 
     stateLog = []
     infLog = []
