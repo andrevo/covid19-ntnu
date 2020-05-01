@@ -543,6 +543,9 @@ def setTestRules(testing, layers, attrs):
             testRules['pools'] = genTestPoolsHHaboveSize(layers, attrs, testing['capacity'], testing['cutoff'])
         if testing['testStrat'] in ['RPHT']:
             testRules['pools'] = genTestPoolsRandomHH(layers, attrs, testing['capacity'])
+        if testing['testStrat'] in ['RIT']:
+            testRules['pools'] = [{'nodes': [node]} for node in random.sample(list(attrs.keys()), testing['capacity'])]
+            testRules['mode'] = 'FullHH'
         if testing['testStrat'] in ['TPHTA']:
             testRules['mode'] = 'Adults'
         if testing['testStrat'] in ['TPHT', 'RPHT']:
