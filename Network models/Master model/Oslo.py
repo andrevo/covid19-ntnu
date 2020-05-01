@@ -7,10 +7,11 @@ layers, attrs = initModel('idAndAge_Oslo.txt', 'socialNetwork_Oslo.txt', '', bas
 #genBlankState(attrs)
 #seedState(attrs, 20)
 
-strat = {'S': 10, 'W': 1, 'R': 3}
+strat = {'S': 10, 'W': 1, 'R': 1}
 inVec = convertVector(strat)
 
 #stateLog, infLog, infLogByLayer, i, = fullRun(attrs, layers, strat, baseP)
-stateLog, infLog, infLogByLayer, i, = timedRun(attrs, layers, strat, baseP, 0, 5)
+testing = {'testStrat': 'TPHT', 'capacity':50000, 'cutoff': 3}
+stateLog, infLog, infLogByLayer, i, = timedRun(attrs, layers, strat, baseP, 0, 30)
 
 

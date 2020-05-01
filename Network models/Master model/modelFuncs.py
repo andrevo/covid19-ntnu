@@ -99,7 +99,7 @@ def readModel(ageFile, cliqueFile):
 
 
 
-    
+
     for layer in layers:
         layers[layer]['cliques'] = []
         layers[layer]['open'] = True
@@ -323,7 +323,7 @@ def ifSwitch(node, attrs, p, day):
     
 
 #Daily pulse
-def systemDay(layers, attrs, p, day):
+def systemDay(layers, attrs, p, day, testRules={}):
 
     cont = 0
 
@@ -348,6 +348,16 @@ def systemDay(layers, attrs, p, day):
             stateFunction(attrs[node]['state'])(node, attrs, p, day)
             #ifSwitch(node, attrs, p, day)
             cont = True
+
+    if testRules:
+        if i % 7 == 0:
+            if testRules['mode'] == 'FullHH':
+                for pool in testRules['pools']:
+                    testAndQuar(pool, attrs)
+            if testRules == 'Adults':
+                for pool in testRules['pools']:
+                    testAndQuarAdults(pool, attrs)
+    
     return cont, lInfs, dailyInfs
 
 
@@ -531,6 +541,12 @@ def convertVector(inputVector):
 def setStrategy(inputVector, probs, layers, attrs):
 
     newP = copy.deepcopy(probs)
+        
+    if 'poolSelection' in inputVector:
+        if layers['poolSelection'] == 'largeHH':
+            genTestPoolsHHaboveSize(layers, attrs, 50000, 3)
+            
+            
     layers['W']['open'] = bool(inputVector['W'])
     layers['R']['open'] = bool(inputVector['R'])
 
@@ -589,7 +605,7 @@ def fullRun(seedAttrs, layers, strat, baseP):
     
     return stateLog, infLog, infLogByLayer, i
 
-def timedRun(attrs, layers, strat, baseP, curDay, runDays):
+def timedRun(attrs, layers, strat, baseP, curDay, runDays, testing={}):
     
     cont = 1
     i = curDay
@@ -600,6 +616,19 @@ def timedRun(attrs, layers, strat, baseP, curDay, runDays):
     infLog = []
     infLogByLayer = []
     endDay = curDay+runDays
+
+    testRules = {}
+    if testing:
+        if testing['testStrat'] in ['TPHT, TPHTA']:
+            testRules['pools'] = genTestPoolHHaboveSize(layers, attrs, testing['capacity'], testing['cutoff'])
+        if testing['testStrat'] in ['RPHT']:
+            testRules['pools'] = genTestPoolRandom(layers, attrs, testing['capacity'])
+        if testing['testStrat'] in ['TPHTA']:
+            testRules['mode'] = 'Adults'
+        if testing['testStrat'] in ['TPHT', 'RPHT']:
+            testRules['mode'] = 'FullHH'
+                   
+            
     
     while i < endDay:
         i+=1
@@ -608,7 +637,7 @@ def timedRun(attrs, layers, strat, baseP, curDay, runDays):
         
         dailyInfs = 0
     
-        cont, linfs, dailyInfs = systemDay(layers, attrs, p, i)
+        cont, linfs, dailyInfs = systemDay(layers, attrs, p, i, testRules)
 
         stateLog.append(countState(attrs, stateList))
         infLog.append(dailyInfs)
@@ -622,6 +651,7 @@ def timedRunTesting(attrs, layers, strat, baseP, curDay, runDays, testPools, mod
     i = curDay
     #inVec = convertVector(strat)
     p = setStrategy(strat, baseP, layers, attrs)
+
 
     stateLog = []
     infLog = []
@@ -639,15 +669,8 @@ def timedRunTesting(attrs, layers, strat, baseP, curDay, runDays, testPools, mod
         
         dailyInfs = 0
         
-        cont, linfs, dailyInfs = systemDay(layers, attrs, p, i)
-        if i % 7 == 0:
-            if mode == 'All':
-                for pool in testPools:
-                    testAndQuar(pool, attrs)
-            if mode == 'Adults':
-                for pool in testPools:
-                    testAndQuarAdults(pool, attrs)
-            
+        cont, linfs, dailyInfs = systemDay(layers, attrs, p, i )
+        
 
         stateLog.append(countState(attrs, stateList))
         infLog.append(dailyInfs)
@@ -657,7 +680,7 @@ def timedRunTesting(attrs, layers, strat, baseP, curDay, runDays, testPools, mod
 
 
 def initRun(attrs, layers, strat, baseP, threshold):
-    
+
     cont = 1
     i = 0
     #inVec = convertVector(strat)
@@ -689,7 +712,7 @@ def initRun(attrs, layers, strat, baseP, threshold):
 
 
 
-def fullRunControl(seedAttrs, layers, strat, baseP):
+def fullRunControl(seedAttrs, layers, strat, baseP, testing=''):
     
     cont = 1
     i = 0
@@ -708,7 +731,7 @@ def fullRunControl(seedAttrs, layers, strat, baseP):
 
         dailyInfs = 0
     
-        cont, linfs, dailyInfs = systemDay(layers, attrs, p, i)
+        cont, linfs, dailyInfs = systemDay(layers, attrs, p, i, testing)
         stateLog.append(countState(attrs, stateList))
 
         infLog.append(dailyInfs)
@@ -797,6 +820,8 @@ def dynRandomLayer(attrs, layer, p, day):
 
     return infs
 
+
+    
 
 
 def genBlankState(attrs):
