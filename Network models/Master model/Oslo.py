@@ -11,7 +11,7 @@ strat = {'S': 10, 'W': 1, 'R': 1}
 inVec = convertVector(strat)
 
 #stateLog, infLog, infLogByLayer, i, = fullRun(attrs, layers, strat, baseP)
-testing = {'testStrat': 'TPHT', 'capacity':50000, 'cutoff': 3}
-stateLog, infLog, infLogByLayer, i, = timedRun(attrs, layers, strat, baseP, 0, 30)
+testing = {'testStrat': 'TPHTA', 'capacity':50000, 'cutoff': 3}
+stateLog, infLog, infLogByLayer, i = timedRun(attrs, layers, strat, baseP, 0, 30, testing)
 
 
