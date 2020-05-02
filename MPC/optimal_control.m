@@ -23,8 +23,8 @@ u_min = constraints.u_min;
 x_max = constraints.x_max;
 x_min = constraints.x_min;
 
-du_max = Inf;
-du_min = -Inf;
+du_max = Inf(nu,1);
+du_min = -Inf(nu,1);
 
 if(isfield(constraints,'du_max'))
    du_max  =  constraints.du_max; %  e.g. 1
@@ -107,7 +107,8 @@ for k=0:N-1
     lbw = [lbw; u_min];
     ubw = [ubw; u_max];
     w0 = [w0;  u_start(:,k+1)];
-    discrete = [discrete;ones(nu,1)];
+    %discrete = [discrete;ones(nu,1)];
+    discrete = [discrete;1;0;1];
 
     % Integrate till the end of the interval
     Fk = F('x0', Xk, 'u', Uk);
@@ -115,7 +116,7 @@ for k=0:N-1
     J=J+Fk.qf;
     
     % Cost on change in u:
-    J = J + du_weight*(Uk-U_prev)^2;
+    J = J + du_weight*(Uk-U_prev)'*(Uk-U_prev);
     
     % New NLP variable for state at end of interval
     Xk = MX.sym(['X_' num2str(k+1)], nx);
