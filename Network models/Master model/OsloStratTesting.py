@@ -8,11 +8,13 @@ import multiprocessing
 
 ncores = multiprocessing.cpu_count()
 
-baseP['inf'] = {'BH': 0.00015, 'BS': 0.00015, 'US': 0.00015, 'VS': 0.00015, 'W': 0.00015, 'R': 0.5*pow(10, -6), 'HH': 0.30, 'NH':0.2, 'dynR': 0.0075}
+#baseP['inf'] = {'BH': 0.00015, 'BS': 0.00015, 'US': 0.00015, 'VS': 0.00015, 'W': 0.00015, 'R': 0.5*pow(10, -6), 'HH': 0.30, 'NH':0.2, 'dynR': 0.0075} Works but too many young
+baseP['inf'] = {'BH': 0.00015, 'BS': 0.000015, 'US': 0.00015, 'VS': 0.00015, 'W': 0.0015, 'R': 0.5*pow(10, -6), 'HH': 0.30, 'NH':0.2, 'dynR': 0.0075}
 
 layers, attrs= initModel('idAndAge_Oslo.txt', 'socialNetwork_Oslo.txt', '', baseP, [10, 3, -0.5], 20)
 for node in attrs:
     attrs[node]['act'] = min(attrs[node]['act'], 100)
+
 
 lockDay = 20
 schoolOpenDays = 40
@@ -43,9 +45,16 @@ def testRun(attrs, layers, baseP):
     layersFork = copy.deepcopy(layers)
     print("TPHTA test")
 
-    testing = {'testStrat': 'TPHTA', 'capacity':50000, 'cutoff': 3}    
+    testing = {'testStrat': 'TPHTA', 'capacity':50000, 'cutoff': 3, 'age':18}    
     stateLogTPHTA, infLogTPHTA, infLogByLayerTPHTA, i = timedRun(attrsFork, layersFork, strat, baseP, i2, 50, testing)
- 
+
+    attrsFork = copy.deepcopy(attrs)
+    layersFork = copy.deepcopy(layers)
+    print("TPHTA test")
+
+    testing = {'testStrat': 'TPHTA', 'capacity':50000, 'cutoff': 3, 'age': 12}    
+    stateLogTPHTA2, infLogTPHTA2, infLogByLayerTPHTA2, i = timedRun(attrsFork, layersFork, strat, baseP, i2, 50, testing)
+
 
     
     attrsFork = copy.deepcopy(attrs)
@@ -69,14 +78,14 @@ def testRun(attrs, layers, baseP):
     print("NT test")
     stateLogNT, infLogNT, infLogByLayerNT, i = timedRun(attrsFork, layersFork, strat, baseP, i2, 50)
     
-    return stateLog1, stateLog2, stateLog3, stateLogTPHT, stateLogTPHTA, stateLogRPHT, stateLogRIT, stateLogNT, i1
+    return stateLog1, stateLog2, stateLog3, stateLogTPHT, stateLogTPHTA, stateLogTPHTA2, stateLogRPHT, stateLogRIT, stateLogNT, i1
 
 
 
 
 for i in range(1):
     print("Run "+str(i))
-    stateLog1, stateLog2, stateLog3, stateLogTPHT, stateLogTPHTA, stateLogRPHT, stateLogRIT, stateLogNT, lockDay = testRun(attrs, layers, baseP)
+    stateLog1, stateLog2, stateLog3, stateLogTPHT, stateLogTPHTA, stateLogTPHTA2, stateLogRPHT, stateLogRIT, stateLogNT, lockDay = testRun(attrs, layers, baseP)
 
     stateLog = {'1': stateLog1, '2': stateLog2, '3': stateLog3, 'TPHT': stateLogTPHT, 'RPHT': stateLogRPHT, 'TPHTA': stateLogTPHTA, 'RIT': stateLogRIT, 'NT': stateLogNT, 'LockDay': lockDay}
 

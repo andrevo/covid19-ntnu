@@ -356,7 +356,7 @@ def systemDay(layers, attrs, p, day, testRules={}):
                     testAndQuar(pool, attrs)
             if testRules == 'Adults':
                 for pool in testRules['pools']:
-                    testAndQuarAdults(pool, attrs)
+                    testAndQuarAdults(pool, attrs, age=testRules['age'])
     
     return cont, lInfs, dailyInfs
 
@@ -371,9 +371,9 @@ def pooledTest(clique, attrs):
             return True
     return False
 
-def pooledTestAdultOnly(clique, attrs):
+def pooledTestAdultOnly(clique, attrs, age=18):
     for node in clique['nodes']:
-        if attrs[node]['age'] > 18:
+        if attrs[node]['age'] > age:
             if test(node, attrs):
                 return True
     return False
@@ -403,8 +403,8 @@ def testAndQuar(clique, attrs):
     else:
         dequarClique(clique, attrs)
 
-def testAndQuarAdults(clique, attrs):
-    if pooledTestAdultOnly(clique, attrs):
+def testAndQuarAdults(clique, attrs, age):
+    if pooledTestAdultOnly(clique, attrs, age):
         quarClique(clique, attrs)
     else:
         dequarClique(clique, attrs)
@@ -429,7 +429,21 @@ def testTargeted(layers, attrs, capacity, size):
     for clique in pool:
         testAndQuar(clique, attrs)
 
+def findsymptomatic(attrs, layers):
+    symptPool = []
+    for node in  attrs:
+        if attrs[node]['state'] == 'Is':
+            symptPool.append(node)
+    return symptPool
 
+def findsymptomatic(attrs, layers):
+    symptPool = []
+    for node in  attrs:
+        if attrs[node]['state'] == 'Is':
+            symptPool.append(node)
+    return symptPool
+
+            
         
         
     
@@ -548,6 +562,7 @@ def setTestRules(testing, layers, attrs):
             testRules['mode'] = 'FullHH'
         if testing['testStrat'] in ['TPHTA']:
             testRules['mode'] = 'Adults'
+            testRules['age'] = testing['age']
         if testing['testStrat'] in ['TPHT', 'RPHT']:
             testRules['mode'] = 'FullHH'
     return testRules
@@ -578,7 +593,7 @@ def setStrategy(inputVector, probs, layers, attrs):
     layers['HH']['open'] = True
     layers['R']['open'] = True
     
-    qFac = [0.1, 0.35, 0.5, 1]
+    qFac = [0.1, 0.25, 0.5, 1]
 
     
     newP['inf']['R'] = qFac[inputVector['R']]*probs['inf']['R']
