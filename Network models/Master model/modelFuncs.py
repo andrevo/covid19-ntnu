@@ -593,7 +593,7 @@ def setStrategy(inputVector, probs, layers, attrs):
     layers['HH']['open'] = True
     layers['R']['open'] = True
     
-    qFac = [0.1, 0.35, 0.5, 1]
+    qFac = [0.1, 0.25, 0.5, 1]
 
     
     newP['inf']['R'] = qFac[inputVector['R']]*probs['inf']['R']

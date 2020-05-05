@@ -8,7 +8,8 @@ import multiprocessing
 
 ncores = multiprocessing.cpu_count()
 
-baseP['inf'] = {'BH': 0.00015, 'BS': 0.00015, 'US': 0.00015, 'VS': 0.00015, 'W': 0.00015, 'R': 0.5*pow(10, -6), 'HH': 0.30, 'NH':0.2, 'dynR': 0.0075}
+#baseP['inf'] = {'BH': 0.00015, 'BS': 0.00015, 'US': 0.00015, 'VS': 0.00015, 'W': 0.00015, 'R': 0.5*pow(10, -6), 'HH': 0.30, 'NH':0.2, 'dynR': 0.0075} Works but too many young
+baseP['inf'] = {'BH': 0.00015, 'BS': 0.000015, 'US': 0.00015, 'VS': 0.00015, 'W': 0.0015, 'R': 0.5*pow(10, -6), 'HH': 0.30, 'NH':0.2, 'dynR': 0.0075}
 
 layers, attrs= initModel('idAndAge_Oslo.txt', 'socialNetwork_Oslo.txt', '', baseP, [10, 3, -0.5], 20)
 for node in attrs:
