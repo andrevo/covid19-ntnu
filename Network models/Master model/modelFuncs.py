@@ -350,14 +350,23 @@ def systemDay(layers, attrs, p, day, testRules={}):
             cont = True
 
     if testRules:
-        if day % 7 == 0:
-            if testRules['mode'] == 'FullHH':
-                for pool in testRules['pools']:
-                    testAndQuar(pool, attrs)
-            if testRules == 'Adults':
-                for pool in testRules['pools']:
-                    testAndQuarAdults(pool, attrs, age=testRules['age'])
-    
+        if testRules['strat'] != 'Symptomatic':
+            if day % 7 == 0:
+                if testRules['mode'] == 'FullHH':
+                    for pool in testRules['pools']:
+                        testAndQuar(pool, attrs)
+                if testRules == 'Adults':
+                    for pool in testRules['pools']:
+                        testAndQuarAdults(pool, attrs, age=testRules['age'])
+        else:
+            for node in attrs:
+                if attrs[node]['state'] == 'Is':
+                    
+                    if attrs[node]['lastChangeDay'] == (day-2):
+                    
+                        indTestAndQuar(node, attrs, layers)
+            
+            
     return cont, lInfs, dailyInfs
 
 
@@ -396,7 +405,7 @@ def dequarClique(clique, attrs):
     for node in clique['nodes']:
         dequarNode(node, attrs)
 
-
+        
 def testAndQuar(clique, attrs):
     if pooledTest(clique, attrs):
         quarClique(clique, attrs)
@@ -409,7 +418,16 @@ def testAndQuarAdults(clique, attrs, age):
     else:
         dequarClique(clique, attrs)
 
-        
+def indTestAndQuar(node, attrs, layers):
+    if test(node, attrs):
+
+        if attrs[node]['inNursing'] == False:
+            for clique in attrs[node]['cliques']:
+                if clique[0] == 'HH':
+                    hhID = clique[1]
+                    quarClique(layers['HH']['cliques'][hhID], attrs)
+            
+            
 def genTestPoolsRandomHH(layers, attrs, capacity):
 
     return random.sample(layers['HH']['cliques'], capacity)
@@ -552,7 +570,10 @@ def convertVector(inputVector):
 
 def setTestRules(testing, layers, attrs):
     testRules = {}
+    
     if testing:
+
+        testRules['strat'] = testing['testStrat']
         if testing['testStrat'] in ['TPHT', 'TPHTA']:
             testRules['pools'] = genTestPoolsHHaboveSize(layers, attrs, testing['capacity'], testing['cutoff'])
         if testing['testStrat'] in ['RPHT']:
