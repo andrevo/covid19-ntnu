@@ -14,7 +14,8 @@ def run_strat_days_delay(strat,t,days):
 
     cont = 1
     i = curDay
-    startStrat = {'S': 20, 'W': 1.0, 'R': 3}
+    #startStrat = {'S': 20, 'W': 1.0, 'R': 3}
+    startStrat = strat
     p = setStrategy(startStrat, baseP, layers, attrs)
 
     stateLog = []
@@ -22,7 +23,8 @@ def run_strat_days_delay(strat,t,days):
     infLogByLayer = []
     endDay = curDay + runDays
 
-    testing = {}
+    testing = {'testStrat': 'TPHT', 'capacity': t, 'cutoff': 3}
+    #testing = {}
     testRules = setTestRules(testing, layers, attrs)
 
     while cont and (i < endDay):
@@ -33,18 +35,18 @@ def run_strat_days_delay(strat,t,days):
         dailyInfs = 0
 
         cont, linfs, dailyInfs = systemDay(layers, attrs, p, i, testRules)
-        print linfs
+        #print linfs
         count = countState(attrs, stateList)
         stateLog.append(count)
         infLog.append(dailyInfs)
         infLogByLayer.append(linfs)
 
-        if count['Is'] > 500:
-            p = setStrategy(strat, baseP, layers, attrs)
-            testing = {'testStrat': 'TPHT', 'capacity': t, 'cutoff': 3}
-            testRules = setTestRules(testing, layers, attrs)
+     #   if count['Ia'] >= 100:
+     #       p = setStrategy(strat, baseP, layers, attrs)
+     #       testing = {'testStrat': 'TPHT', 'capacity': t, 'cutoff': 3}
+     #       testRules = setTestRules(testing, layers, attrs)
 
-    return stateLog
+    return stateLog, infLogByLayer
 
 
 def run_strat_days(strat,t,days):
@@ -57,15 +59,20 @@ def run_strat_days(strat,t,days):
 
 
 def run_strat_and_save(r,t,k,maxDays):
-    strat = {'S': 20, 'W': 1.0, 'R': r}
-    stateLog = run_strat_days_delay(strat,t,maxDays)
+    strat = {'S': 20, 'W': 0.5, 'R': r}
+    stateLog, infLogByLayer = run_strat_days_delay(strat,t,maxDays)
     #stateLog = run_strat_days(strat, t, maxDays)
     data = {}
     for comp in stateList:
         data[comp] = numpy.array([d[comp] for d in stateLog])
-        fileName = 'results/r' + str(r) + '_t' + str(t)  + '_run' + str(k) + '.mat'
-        scipy.io.savemat(fileName, data)
-        print fileName + " saved!"
+    layers = ['HH','W','BH','BS','US','VS','NH','Rp']
+
+    for layer in layers:
+        data[layer] = numpy.array([d[layer] for d in infLogByLayer])
+
+    fileName = 'results/r' + str(r) + '_t' + str(t)  + '_run' + str(k) + '.mat'
+    scipy.io.savemat(fileName, data)
+    print fileName + " saved!"
 
 
 if __name__ == "__main__":
