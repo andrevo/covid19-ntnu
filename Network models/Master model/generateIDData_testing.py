@@ -6,8 +6,8 @@ import sys
 
 def run_strat_days_delay(strat,t,days):
     folder = "covid19-ntnu/Network models/Master model/"
-    layers, attrs = initModel(folder + 'idAndAge_Trondheim.txt', folder + 'socialNetwork_Trondheim.txt', '', baseP, [10, 3, -.75], 20)
-    #layers, attrs = initModel('idAndAge_Oslo.txt', 'socialNetwork_Oslo.txt', '', baseP, [10, 3, -.75], 20)
+    #layers, attrs = initModel(folder + 'idAndAge_Trondheim.txt', folder + 'socialNetwork_Trondheim.txt', '', baseP, [10, 3, -.75], 20)
+    layers, attrs = initModel(folder + 'idAndAge_Oslo.txt', folder + 'socialNetwork_Oslo.txt', '', baseP, [10, 3, -.75], 20)
 
     curDay = 0
     runDays = days
