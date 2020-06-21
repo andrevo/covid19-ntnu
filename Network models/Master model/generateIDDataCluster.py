@@ -17,10 +17,12 @@ def run_days(u,delay,delayCount,constant,runDays,controlInterval):
     cont = 1
     i = curDay
 
+    u_impl = 5
     startStrat = {'S': 20, 'W': 1.0, 'R': 3}
 
-    if(not delay):
+    if(constant and not delay):
         startStrat = strats[u]
+        u_impl = 4
 
     p = setStrategy(startStrat, baseP, layers, attrs)
 
@@ -35,20 +37,28 @@ def run_days(u,delay,delayCount,constant,runDays,controlInterval):
     testRules = setTestRules(testing, layers, attrs)
 
     init = False
+    if not constant and not delay:
+        init = True
+
+    count = countState(attrs, stateList)
+
+    offset = 0
 
     while cont and (i < endDay):
         if constant and delay and (not init) and (count['Ia'] >= delayCount):
-            strat = strats[u]
+            strat = strats[u_impl]
             p = setStrategy(strat, baseP, layers, attrs)
             #testing = {'testStrat': 'TPHT', 'capacity': t, 'cutoff': 3}
             #testRules = setTestRules(testing, layers, attrs)
             init = True
         if not constant:
-            if (delay and (count['Ia'] >= delayCount)) or not delay:
-                if(not i % controlInterval):
-                    u = randint(0, len(strats) - 1)
-                    strat = strats[u]
-                    p = setStrategy(strat, baseP, layers, attrs)
+            if delay and not init and count['Ia'] >= delayCount:
+                init = True
+                offset = i
+            if init and (not ((i-offset) % controlInterval)):
+                u_impl = randint(0, len(strats) - 1)
+                strat = strats[u_impl]
+                p = setStrategy(strat, baseP, layers, attrs)
         
         i += 1
         sys.stdout.flush()
@@ -61,7 +71,7 @@ def run_days(u,delay,delayCount,constant,runDays,controlInterval):
         stateLog.append(count)
         infLog.append(dailyInfs)
         infLogByLayer.append(linfs)
-        uLog.append(u)
+        uLog.append(u_impl)
 
     return uLog, stateLog, infLogByLayer
 
@@ -86,7 +96,7 @@ def run_strat_and_save(u,delay,delayCount,constant,maxDays,controlInterval,k):
 if __name__ == "__main__":
     if len(sys.argv)>7:
         u = int(sys.argv[1])
-        delay = t_vals[int(sys.argv[2])]
+        delay = int(sys.argv[2])
         delayCount = int(sys.argv[3])
         constant = int(sys.argv[4])
         maxDays = int(sys.argv[5])
