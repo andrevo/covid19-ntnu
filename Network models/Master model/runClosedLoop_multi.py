@@ -92,13 +92,14 @@ def controlledRun(simDays,k):
     data['u_preds'] = u_preds
     data['slack_vars'] = slack_vars
     data['t_preds'] = t_preds
+    data['u_out']  = u_out
     for comp in stateList:
         data[comp] = numpy.array([d[comp] for d in stateLog])
 
-    dir = os.path.join(os.getcwd(),"new_model")
+    dir = os.path.join(os.getcwd(),"new_model_090")
     if not os.path.exists(dir):
         os.mkdir(dir)
-    fileName = 'new_model/closedLoop_test_run' + str(k) + '.mat'
+    fileName = 'new_model_090/closedLoop_test_run' + str(k) + '.mat'
     scipy.io.savemat(fileName,data)
 
 #if __name__ == "__main__":
