@@ -1,12 +1,12 @@
-from modelFuncs import *
+import matlab.engine # NB: needs to come before we import modelFuncs (don't know why)
 import scipy.io
 import numpy
 import os
 import sys
-import matlab.engine
 from joblib import Parallel, delayed
 import multiprocessing
-from collections imiport deque
+from collections import deque
+from modelFuncs import *
 
 # 6 strats
 strats = [{'S':0, 'W':0.0, 'R':0}, {'S':9, 'W':0.0, 'R':0}, {'S':9, 'W':0.4, 'R':1}, {'S':20, 'W':0.4, 'R':1}, {'S':20, 'W':0.8, 'R':2}, {'S':20, 'W':1.0, 'R':3}]
@@ -18,11 +18,11 @@ def controlledRun(simDays,k):
     # Start matlab engine and set paths to casadi and MPC code
     eng = matlab.engine.start_matlab()
     eng.addpath(r'/home/ubuntu/software/casadi')
-    eng.addpath(r'/home/ubuntu/software/covid19_master/control', nargout=0)
+    eng.addpath(r'/home/ubuntu/software/covid19_master/Control', nargout=0)
     
     # Run init script
     eng.problemDef(nargout=0)
-    dt_u = eng.workspace['dt']
+    dt_u = 7
     N = eng.workspace['N_pop']
 
     # NB! this is used from day 0 to day 1!
@@ -56,11 +56,11 @@ def controlledRun(simDays,k):
             x = [[S], [I], [ICU]] + list(I_prevs)
 
             eng.workspace['x'] = matlab.double(x)
-            eng.workspace['u'] = u
+            eng.workspace['u'] = float(u)
             eng.eval('problem = initNLP(model,cost,constraints,options,x,u);',nargout=0)
             [x_opt,u_opt,s_opt,t_opt] = eng.eval('solveNLP(problem);',nargout=4)
 
-            u = u_opt[0]
+            u = u_opt[0][0]
 
             x_preds.append(x_opt)
             u_preds.append(u_opt)
@@ -76,7 +76,7 @@ def controlledRun(simDays,k):
 
         dailyInfs = 0
         
-        strat = strats[u]
+        strat = strats[int(u)]
         u_out.append(u)
         p = setStrategy(strat, baseP, layers, attrs)
         
@@ -101,11 +101,11 @@ def controlledRun(simDays,k):
     fileName = 'new_model/closedLoop_test_run' + str(k) + '.mat'
     scipy.io.savemat(fileName,data)
 
-if __name__ == "__main__":
-    days = 20
-    num_cores = 2 # multiprocessing.cpu_count()
-    N = 2 # num_cores
-    Parallel(n_jobs=num_cores, verbose=10)(delayed(controlledRun)(days,k) for k in range(N))
+#if __name__ == "__main__":
+days = 200
+num_cores = 10 # multiprocessing.cpu_count()
+N = 10 # num_cores
+Parallel(n_jobs=num_cores, verbose=10)(delayed(controlledRun)(days,k) for k in range(N))
 
 
 
