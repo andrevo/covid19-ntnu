@@ -1,6 +1,6 @@
 # covid19-ntnu
 
-Active control code lies in the folders "System Identification" and "Control". MPC, Model Fitting and Simulink Models folders contain legacy code.
+Active control code lies in the folders "System Identification" and "Control". MPC, Model Fitting and Simulink Models folders contain legacy code. Further cleanup of the codebase will happen soon.
 
 The MATLAB code for numerical optimization depends on the open-source toolbox CasADi, which can be interfaced through MATLAB, but also OCTAVE and Python. See https://web.casadi.org/get/ for install instructions.
 
