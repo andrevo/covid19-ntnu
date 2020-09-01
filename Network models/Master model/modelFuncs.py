@@ -137,8 +137,52 @@ def readModel(ageFile, cliqueFile):
     return layers, attrs
 
 
+def splitHHs(layers, attrs, p):
+    newHHLayer = {'cliques': [], 'open': True}
+    for clique in layers['HH']['cliques']:
+        adults = []
+        children = []
+        
+        for node in clique['nodes']:
+            if attrs[node]['age'] > 18:
+                adults.append(node)
+            else:
+                children.append(node)
+        if ((len(adults) > 1) & (random.random() < p)):
+            c = []
+            c.append({'nodes': [adults[0]], 'open': True})
+            c.append({'nodes': [adults[1]], 'open': True})
+            if len(adults) > 2:
+                for adult in adults[2:]:
+                    c[random.randint(0, 1)]['nodes'].append(adult)
+                for child in children:
+                    c[random.randint(0, 1)]['nodes'].append(child)
+            newHHLayer['cliques'].append(c[0])
+            newHHLayer['cliques'].append(c[1])
+        else:
+            newHHLayer['cliques'].append(clique)
+    layers['HH'] = newHHLayer
+
+def mergeHHs(layers, attrs, p):
+    newHHLayer = {'cliques': [], 'open': True}
+    seq = range(len(layers['HH']['cliques']))
+    random.shuffle(seq)
+    for i in range(0, len(layers['HH']['cliques'])-1, 2):
+        if random.random() < p:
+            newClique = {'nodes': [], 'open': True}
+            newClique['nodes'].extend(layers['HH']['cliques'][seq[i]]['nodes'])
+            newClique['nodes'].extend(layers['HH']['cliques'][seq[i+1]]['nodes'])
+            newHHLayer['cliques'].append(newClique)
+        else:
+            newHHLayer['cliques'].append(layers['HH']['cliques'][seq[i]])
+            newHHLayer['cliques'].append(layers['HH']['cliques'][seq[i+1]])
+
+    if len(layers['HH']['cliques']) % 2 == 1:
+        newHHLayer['cliques'].append(layers['HH']['cliques'][seq[-1]])
+    layers['HH'] = newHHLayer
 
 
+                    
 def infectNode(attrs, node, anc, layer, day):
     attrs[node]['state'] = 'E'
     attrs[node]['lastDay'] = day
@@ -323,7 +367,7 @@ def ifSwitch(node, attrs, p, day):
     
 
 #Daily pulse
-def systemDay(layers, attrs, p, day, testRules={}):
+def systemDay(layers, attrs, p, day, startDay, testRules = {}):
 
     
     cont = 0
@@ -356,7 +400,7 @@ def systemDay(layers, attrs, p, day, testRules={}):
     if testRules:
 #        print testRules['strat']
         if testRules['strat'] != 'Symptomatic':
-            if day % testRules['freq'] == 0:
+            if (day-startDay) % testRules['freq'] == 0:
                 if testRules['mode'] == 'FullHH':
                     for pool in testRules['pools']:
                         testAndQuar(pool, attrs, day, testRules['fpr'], testRules['fnr'])
@@ -371,7 +415,7 @@ def systemDay(layers, attrs, p, day, testRules={}):
                     
                     if attrs[node]['lastDay'] == (day-2):
                     
-                        indTestAndQuar(node, attrs, layers)
+                        indTestAndQuar(node, attrs, layers, day)
             
             
     return cont, lInfs, dailyInfs
@@ -434,7 +478,7 @@ def testAndQuarAdults(clique, attrs, day, age, fpr=0, fnr=0):
     else:
         dequarClique(clique, attrs)
 
-def indTestAndQuar(node, attrs, layers):
+def indTestAndQuar(node, attrs, layers, day):
     if test(node, attrs, day):
 
         if attrs[node]['inNursing'] == False:
@@ -458,6 +502,14 @@ def genTestPoolsHHaboveSize(layers, attrs, capacity, size):
             validHHs.append(hh)
 
     return random.sample(validHHs, capacity)
+
+def getHHsize(hh):
+    return len(hh['nodes'])
+
+def genTestPoolsTopFraction(layers, attrs, capacity):
+    sortedHHs = sorted(layers['HH']['cliques'], key = getHHsize, reverse = True)
+    return sortedHHs[:capacity]
+    
 
 def genTestPoolsStudents(layers, attrs, capacity, size):
     i = 0
@@ -617,8 +669,13 @@ def setTestRules(testing, layers, attrs):
             else:
                 testRules['pools'] = genTestPoolsHHaboveSize(layers, attrs, testing['capacity'], testing['cutoff'])
                 testRules['pools'].extend(genTestPoolsStudents(layers, attrs, testing['Stud']['capacity'], testing['Stud']['cutoff']))
+        if testing['testStrat'] in ['TPHT2']:
+            testRules['pools'] = genTestPoolsTopFraction(layers, attrs, testing['capacity'])
+            testRules['mode'] = 'FullHH'
         if testing['testStrat'] in ['RPHT']:
             testRules['pools'] = genTestPoolsRandomHH(layers, attrs, testing['capacity'])
+            testRules['mode'] = 'FullHH'
+            
         if testing['testStrat'] in ['NH']:
             testRules['pools'] = genTestPoolsNHPersonnel(layers, attrs)
             testRules['mode'] = 'FullHH'
@@ -710,7 +767,7 @@ def fullRun(seedAttrs, layers, strat, baseP):
 
         dailyInfs = 0
     
-        cont, linfs, dailyInfs = systemDay(layers, attrs, p, i)
+        cont, linfs, dailyInfs = systemDay(layers, attrs, p, i, 0)
         stateLog.append(countState(attrs, stateList))
         infLog.append(dailyInfs)
         infLogByLayer.append(linfs)
@@ -739,7 +796,7 @@ def timedRun(attrs, layers, strat, baseP, curDay, runDays, testing={}):
         
         dailyInfs = 0
     
-        cont, linfs, dailyInfs = systemDay(layers, attrs, p, i, testRules)
+        cont, linfs, dailyInfs = systemDay(layers, attrs, p, i, curDay, testRules)
 
         stateLog.append(countState(attrs, stateList))
         infLog.append(dailyInfs)
@@ -771,7 +828,7 @@ def timedRunTesting(attrs, layers, strat, baseP, curDay, runDays, testPools, mod
         
         dailyInfs = 0
         
-        cont, linfs, dailyInfs = systemDay(layers, attrs, p, i )
+        cont, linfs, dailyInfs = systemDay(layers, attrs, p, i)
         
 
         stateLog.append(countState(attrs, stateList))
@@ -801,7 +858,7 @@ def initRun(attrs, layers, strat, baseP, threshold):
         
         dailyInfs = 0
     
-        cont, linfs, dailyInfs = systemDay(layers, attrs, p, i)
+        cont, linfs, dailyInfs = systemDay(layers, attrs, p, i, 0)
 
 
         stateLog.append(countState(attrs, stateList))
