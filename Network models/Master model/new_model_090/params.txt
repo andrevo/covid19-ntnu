@@ -1,0 +1,3 @@
+dt = 7, T = 56, ICU_max = 74, safety = 0.9
+weight_y = 100, weight_u = 0.1, weight_s = 900000000000, weight_du = 0
+du_min = -Inf, du_max = Inf
