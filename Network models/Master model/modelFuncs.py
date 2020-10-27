@@ -400,13 +400,14 @@ def systemDay(layers, attrs, p, day, startDay, testRules = {}):
     if testRules:
 #        print testRules['strat']
         if testRules['strat'] != 'Symptomatic':
-            if (day-startDay) % testRules['freq'] == 0:
-                if testRules['mode'] == 'FullHH':
-                    for pool in testRules['pools']:
+            #if (day-startDay) % testRules['freq'] == 0:
+            if testRules['mode'] == 'FullHH':
+                for pool in testRules['pools']:
+                    if (day % testRules['freq']) == pool['testDay']:
                         testAndQuar(pool, attrs, day, testRules['fpr'], testRules['fnr'])
-                if testRules['mode'] == 'Adults':
-                    for pool in testRules['pools']:
-                        testAndQuarAdults(pool, attrs, day, testRules['age'], testRules['fpr'], testRules['fnr'])
+            if testRules['mode'] == 'Adults':
+                for pool in testRules['pools']:
+                    testAndQuarAdults(pool, attrs, day, testRules['age'], testRules['fpr'], testRules['fnr'])
                     
  #                
         else:
@@ -686,6 +687,7 @@ def setTestRules(testing, layers, attrs):
         if testing['testStrat'] in ['RIT']:
             testRules['pools'] = [{'nodes': [node]} for node in random.sample(list(attrs.keys()), testing['capacity'])]
             testRules['mode'] = 'FullHH'
+
         if testing['testStrat'] in ['TPHTA']:
             testRules['mode'] = 'Adults'
             testRules['age'] = testing['age']
@@ -695,6 +697,9 @@ def setTestRules(testing, layers, attrs):
             testRules['freq'] = testing['freq']
         else:
             testRules['freq'] = 7
+
+        for pool in testRules['pools']:
+            pool['testDay'] = random.randint(0, testRules['freq']-1)
 
         if 'fnr' in testing:
             testRules['fnr'] = testing['fnr']
