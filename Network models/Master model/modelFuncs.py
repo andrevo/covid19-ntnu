@@ -407,7 +407,8 @@ def systemDay(layers, attrs, p, day, startDay, testRules = {}):
                         testAndQuar(pool, attrs, day, testRules['fpr'], testRules['fnr'])
             if testRules['mode'] == 'Adults':
                 for pool in testRules['pools']:
-                    testAndQuarAdults(pool, attrs, day, testRules['age'], testRules['fpr'], testRules['fnr'])
+                    if (day % testRules['freq']) == pool['testDay']:
+                        testAndQuarAdults(pool, attrs, day, testRules['age'], testRules['fpr'], testRules['fnr'])
                     
  #                
         else:
@@ -437,8 +438,11 @@ def test(node, attrs, day, fpr=0, fnr=0):
 
 def pooledTest(clique, attrs, day, fpr=0, fnr=0):    
     for node in clique['nodes']:
-        if test(node, attrs, day, fpr, fnr):
-            return True
+        if test(node, attrs, day):
+            if random.random() < fnr:
+                return False
+            else:
+                return True
     return False
 
 def pooledTestAdultOnly(clique, attrs, day, fpr=0, fnr=0, age=18):
@@ -507,9 +511,20 @@ def genTestPoolsHHaboveSize(layers, attrs, capacity, size):
 def getHHsize(hh):
     return len(hh['nodes'])
 
-def genTestPoolsTopFraction(layers, attrs, capacity):
+def genTestPoolsTopFraction(layers, attrs, capacity, compliance=1.0):
     sortedHHs = sorted(layers['HH']['cliques'], key = getHHsize, reverse = True)
-    return sortedHHs[:capacity]
+    if (compliance == 1.0):
+        return sortedHHs[:capacity]
+    else:
+        i = 0
+        j = 0
+        pools = []
+        while i < capacity:
+            if random.random() < compliance:
+                pools.append(sortedHHs[j])
+                i += 1
+            j += 1
+        return pools
     
 
 def genTestPoolsStudents(layers, attrs, capacity, size):
@@ -671,8 +686,15 @@ def setTestRules(testing, layers, attrs):
                 testRules['pools'] = genTestPoolsHHaboveSize(layers, attrs, testing['capacity'], testing['cutoff'])
                 testRules['pools'].extend(genTestPoolsStudents(layers, attrs, testing['Stud']['capacity'], testing['Stud']['cutoff']))
         if testing['testStrat'] in ['TPHT2']:
-            testRules['pools'] = genTestPoolsTopFraction(layers, attrs, testing['capacity'])
+            if 'compliance' in testing:
+                testRules['pools'] = genTestPoolsTopFraction(layers, attrs, testing['capacity'], testing['compliance'])
+            else:
+                testRules['pools'] = genTestPoolsTopFraction(layers, attrs, testing['capacity'])
             testRules['mode'] = 'FullHH'
+        if testing['testStrat'] in ['TPHTA2']:
+            testRules['pools'] = genTestPoolsTopFraction(layers, attrs, testing['capacity'])
+            testRules['mode'] = 'Adults'
+            testRules['age'] = testing['age']
         if testing['testStrat'] in ['RPHT']:
             testRules['pools'] = genTestPoolsRandomHH(layers, attrs, testing['capacity'])
             testRules['mode'] = 'FullHH'
