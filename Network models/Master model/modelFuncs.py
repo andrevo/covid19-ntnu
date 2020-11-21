@@ -137,11 +137,55 @@ def readModel(ageFile, cliqueFile):
     return layers, attrs
 
 
+def splitHHs(layers, attrs, p):
+    newHHLayer = {'cliques': [], 'open': True}
+    for clique in layers['HH']['cliques']:
+        adults = []
+        children = []
+        
+        for node in clique['nodes']:
+            if attrs[node]['age'] > 18:
+                adults.append(node)
+            else:
+                children.append(node)
+        if ((len(adults) > 1) & (random.random() < p)):
+            c = []
+            c.append({'nodes': [adults[0]], 'open': True})
+            c.append({'nodes': [adults[1]], 'open': True})
+            if len(adults) > 2:
+                for adult in adults[2:]:
+                    c[random.randint(0, 1)]['nodes'].append(adult)
+                for child in children:
+                    c[random.randint(0, 1)]['nodes'].append(child)
+            newHHLayer['cliques'].append(c[0])
+            newHHLayer['cliques'].append(c[1])
+        else:
+            newHHLayer['cliques'].append(clique)
+    layers['HH'] = newHHLayer
+
+def mergeHHs(layers, attrs, p):
+    newHHLayer = {'cliques': [], 'open': True}
+    seq = range(len(layers['HH']['cliques']))
+    random.shuffle(seq)
+    for i in range(0, len(layers['HH']['cliques'])-1, 2):
+        if random.random() < p:
+            newClique = {'nodes': [], 'open': True}
+            newClique['nodes'].extend(layers['HH']['cliques'][seq[i]]['nodes'])
+            newClique['nodes'].extend(layers['HH']['cliques'][seq[i+1]]['nodes'])
+            newHHLayer['cliques'].append(newClique)
+        else:
+            newHHLayer['cliques'].append(layers['HH']['cliques'][seq[i]])
+            newHHLayer['cliques'].append(layers['HH']['cliques'][seq[i+1]])
+
+    if len(layers['HH']['cliques']) % 2 == 1:
+        newHHLayer['cliques'].append(layers['HH']['cliques'][seq[-1]])
+    layers['HH'] = newHHLayer
 
 
+                    
 def infectNode(attrs, node, anc, layer, day):
     attrs[node]['state'] = 'E'
-    attrs[node]['lastChangeDay'] = day
+    attrs[node]['lastDay'] = day
     attrs[node]['infAnc'] = [anc, layer]
     attrs[anc]['infDesc'].append([node, layer])
 
@@ -323,16 +367,16 @@ def ifSwitch(node, attrs, p, day):
     
 
 #Daily pulse
-def systemDay(layers, attrs, p, day, testRules={}):
+def systemDay(layers, attrs, p, day, startDay, testRules = {}):
 
+    
     cont = 0
-
     lInfs = {}
     dailyInfs = 0
     for layer in layers:
         lInfs[layer] = 0
 
-        if (layers[layer]['open']) & (layer != 'R'): #i > rel[layer]:
+        if (layers[layer]['open']) & (layer != 'R') & (layer != 'NTNUSocial'): #i > rel[layer]:
             for clique in layers[layer]['cliques']:
                 if clique['open']:
                     infs = cliqueDay(clique['nodes'], attrs, layer, p['inf'][layer], day)
@@ -340,6 +384,9 @@ def systemDay(layers, attrs, p, day, testRules={}):
                     dailyInfs += len(infs)
         
     lInfs['Rp'] = dynRandomLayer(attrs, layers['R']['cliques'][0], p['inf']['dynR'], day)
+    if ('NTNUSocial' in layers):
+        lInfs['NTNUSocial'] = dynRandomLayer(attrs, layers['NTNUSocial']['cliques'][0], p['inf']['dynR'], day)
+    
     dailyInfs += lInfs['Rp']
     
         
@@ -349,42 +396,69 @@ def systemDay(layers, attrs, p, day, testRules={}):
             #ifSwitch(node, attrs, p, day)
             cont = True
 
+
     if testRules:
-        if day % 7 == 0:
+#        print testRules['strat']
+        if testRules['strat'] != 'Symptomatic':
+            #if (day-startDay) % testRules['freq'] == 0:
             if testRules['mode'] == 'FullHH':
                 for pool in testRules['pools']:
-                    testAndQuar(pool, attrs)
-            if testRules == 'Adults':
+                    if (day % testRules['freq']) == pool['testDay']:
+                        testAndQuar(pool, attrs, day, testRules['fpr'], testRules['fnr'])
+            if testRules['mode'] == 'Adults':
                 for pool in testRules['pools']:
-                    testAndQuarAdults(pool, attrs, age=testRules['age'])
-    
+                    if (day % testRules['freq']) == pool['testDay']:
+                        testAndQuarAdults(pool, attrs, day, testRules['age'], testRules['fpr'], testRules['fnr'])
+                    
+ #                
+        else:
+            for node in attrs:
+                if attrs[node]['state'] == 'Is':
+                    
+                    if attrs[node]['lastDay'] == (day-2):
+                    
+                        indTestAndQuar(node, attrs, layers, day)
+            
+            
     return cont, lInfs, dailyInfs
 
 
-def test(node, attrs):
-    return attrs[node]['state'] in {'Ip', 'Ia', 'Is'}
+def test(node, attrs, day, fpr=0, fnr=0):
+    
+    if attrs[node]['state'] in {'Ip', 'Ia'}:
+        #if (attrs[node]['lastDay'] < day-1):
+        return random.random() > fnr
+        #else:
+        #    return random.random() < fpr
+    elif attrs[node]['state'] == 'Is':
+        return random.random() > fnr        
+    else:
+        return random.random() < fpr
 
 
-def pooledTest(clique, attrs):    
+def pooledTest(clique, attrs, day, fpr=0, fnr=0):    
     for node in clique['nodes']:
-        if test(node, attrs):
-            return True
+        if test(node, attrs, day):
+            if random.random() < fnr:
+                return False
+            else:
+                return True
     return False
 
-def pooledTestAdultOnly(clique, attrs, age=18):
+def pooledTestAdultOnly(clique, attrs, day, fpr=0, fnr=0, age=18):
     for node in clique['nodes']:
         if attrs[node]['age'] > age:
-            if test(node, attrs):
+            if test(node, attrs, day, fpr, fnr):
                 return True
     return False
 
 
 def quarNode(node, attrs):
-    for layer in {'W', 'US', 'VS', 'BS', 'BH', 'R'}:
+    for layer in {'W', 'US', 'VS', 'BS', 'BH', 'R', 'NH'}:
         attrs[node]['present'][layer] = False
 
 def dequarNode(node, attrs):
-    for layer in {'W', 'US', 'VS', 'BS', 'BH', 'R'}:
+    for layer in {'W', 'US', 'VS', 'BS', 'BH', 'R', 'NH'}:
         attrs[node]['present'][layer] = True
 
 
@@ -396,23 +470,33 @@ def dequarClique(clique, attrs):
     for node in clique['nodes']:
         dequarNode(node, attrs)
 
-
-def testAndQuar(clique, attrs):
-    if pooledTest(clique, attrs):
-        quarClique(clique, attrs)
-    else:
-        dequarClique(clique, attrs)
-
-def testAndQuarAdults(clique, attrs, age):
-    if pooledTestAdultOnly(clique, attrs, age):
-        quarClique(clique, attrs)
-    else:
-        dequarClique(clique, attrs)
-
         
+def testAndQuar(clique, attrs, day, fpr=0, fnr=0):
+    if pooledTest(clique, attrs, day, fpr, fnr):
+        quarClique(clique, attrs)
+    else:
+        dequarClique(clique, attrs)
+
+def testAndQuarAdults(clique, attrs, day, age, fpr=0, fnr=0):
+    if pooledTestAdultOnly(clique, attrs, day, fpr, fnr, age):
+        quarClique(clique, attrs)
+    else:
+        dequarClique(clique, attrs)
+
+def indTestAndQuar(node, attrs, layers, day):
+    if test(node, attrs, day):
+
+        if attrs[node]['inNursing'] == False:
+            for clique in attrs[node]['cliques']:
+                if clique[0] == 'HH':
+                    hhID = clique[1]
+                    quarClique(layers['HH']['cliques'][hhID], attrs)
+            
+            
 def genTestPoolsRandomHH(layers, attrs, capacity):
 
     return random.sample(layers['HH']['cliques'], capacity)
+
 
 def genTestPoolsHHaboveSize(layers, attrs, capacity, size):
 
@@ -423,7 +507,46 @@ def genTestPoolsHHaboveSize(layers, attrs, capacity, size):
             validHHs.append(hh)
 
     return random.sample(validHHs, capacity)
+
+def getHHsize(hh):
+    return len(hh['nodes'])
+
+def genTestPoolsTopFraction(layers, attrs, capacity, compliance=1.0):
+    sortedHHs = sorted(layers['HH']['cliques'], key = getHHsize, reverse = True)
+    if (compliance == 1.0):
+        return sortedHHs[:capacity]
+    else:
+        i = 0
+        j = 0
+        pools = []
+        while i < capacity:
+            if random.random() < compliance:
+                pools.append(sortedHHs[j])
+                i += 1
+            j += 1
+        return pools
     
+
+def genTestPoolsStudents(layers, attrs, capacity, size):
+    i = 0
+    validHHs = []
+    for hh in layers['HH']['cliques']:
+        if (len(hh['nodes']) > size) & (hh['nodes'][0][0] == 's'):
+            validHHs.append(hh)
+    return random.sample(validHHs, capacity)
+
+
+
+def genTestPoolsNHPersonnel(layers, attrs):
+    testPool = []
+    for nh in layers['NH']['cliques']:
+        clique = {'nodes': []}
+        for node in nh['nodes']:
+            if attrs[node]['inNursing'] == False:
+                clique['nodes'].append(node)
+        testPool.append(clique)
+    return testPool
+
 def testTargeted(layers, attrs, capacity, size):
     pool = genTestPoolsHHaboveSize(layers, attrs, capacity, size)
     for clique in pool:
@@ -552,19 +675,63 @@ def convertVector(inputVector):
 
 def setTestRules(testing, layers, attrs):
     testRules = {}
+    
     if testing:
+
+        testRules['strat'] = testing['testStrat']
         if testing['testStrat'] in ['TPHT', 'TPHTA']:
-            testRules['pools'] = genTestPoolsHHaboveSize(layers, attrs, testing['capacity'], testing['cutoff'])
+            if 'Stud' not in testing:
+                testRules['pools'] = genTestPoolsHHaboveSize(layers, attrs, testing['capacity'], testing['cutoff'])
+            else:
+                testRules['pools'] = genTestPoolsHHaboveSize(layers, attrs, testing['capacity'], testing['cutoff'])
+                testRules['pools'].extend(genTestPoolsStudents(layers, attrs, testing['Stud']['capacity'], testing['Stud']['cutoff']))
+        if testing['testStrat'] in ['TPHT2']:
+            if 'compliance' in testing:
+                testRules['pools'] = genTestPoolsTopFraction(layers, attrs, testing['capacity'], testing['compliance'])
+            else:
+                testRules['pools'] = genTestPoolsTopFraction(layers, attrs, testing['capacity'])
+            testRules['mode'] = 'FullHH'
+        if testing['testStrat'] in ['TPHTA2']:
+            testRules['pools'] = genTestPoolsTopFraction(layers, attrs, testing['capacity'])
+            testRules['mode'] = 'Adults'
+            testRules['age'] = testing['age']
         if testing['testStrat'] in ['RPHT']:
             testRules['pools'] = genTestPoolsRandomHH(layers, attrs, testing['capacity'])
+            testRules['mode'] = 'FullHH'
+            
+        if testing['testStrat'] in ['NH']:
+            testRules['pools'] = genTestPoolsNHPersonnel(layers, attrs)
+            testRules['mode'] = 'FullHH'
+        if testing['testStrat'] in ['NHTPHT']:
+            testRules['pools'] = genTestPoolsNHPersonnel(layers, attrs)+genTestPoolsHHaboveSize(layers, attrs, testing['capacity'], testing['cutoff'])
+            testRules['mode'] = 'FullHH'
+
         if testing['testStrat'] in ['RIT']:
             testRules['pools'] = [{'nodes': [node]} for node in random.sample(list(attrs.keys()), testing['capacity'])]
             testRules['mode'] = 'FullHH'
+
         if testing['testStrat'] in ['TPHTA']:
             testRules['mode'] = 'Adults'
             testRules['age'] = testing['age']
         if testing['testStrat'] in ['TPHT', 'RPHT']:
             testRules['mode'] = 'FullHH'
+        if 'freq' in testing:
+            testRules['freq'] = testing['freq']
+        else:
+            testRules['freq'] = 7
+
+        for pool in testRules['pools']:
+            pool['testDay'] = random.randint(0, testRules['freq']-1)
+
+        if 'fnr' in testing:
+            testRules['fnr'] = testing['fnr']
+        else:
+            testRules['fnr'] = 0
+        if 'fpr' in testing:
+            testRules['fpr'] = testing['fpr']
+        else:
+            testRules['fpr'] = 0
+            
     return testRules
 
 def setStrategy(inputVector, probs, layers, attrs):
@@ -593,11 +760,11 @@ def setStrategy(inputVector, probs, layers, attrs):
     layers['HH']['open'] = True
     layers['R']['open'] = True
     
-    qFac = [0.1, 0.25, 0.5, 1]
+    #qFac = [0.1, 0.25, 0.5, 1]
 
     
-    newP['inf']['R'] = qFac[inputVector['R']]*probs['inf']['R']
-    newP['inf']['dynR'] = qFac[inputVector['R']]*probs['inf']['dynR']
+    newP['inf']['R'] = inputVector['R']*probs['inf']['R']
+    newP['inf']['dynR'] = inputVector['R']*probs['inf']['dynR']
     
     return newP
 
@@ -627,7 +794,7 @@ def fullRun(seedAttrs, layers, strat, baseP):
 
         dailyInfs = 0
     
-        cont, linfs, dailyInfs = systemDay(layers, attrs, p, i)
+        cont, linfs, dailyInfs = systemDay(layers, attrs, p, i, 0)
         stateLog.append(countState(attrs, stateList))
         infLog.append(dailyInfs)
         infLogByLayer.append(linfs)
@@ -649,14 +816,14 @@ def timedRun(attrs, layers, strat, baseP, curDay, runDays, testing={}):
 
     testRules = setTestRules(testing, layers, attrs)
                    
-    while cont and (i < endDay):
+    while i < endDay:
         i+=1
         sys.stdout.flush()
         sys.stdout.write(str(i)+'\r')
         
         dailyInfs = 0
     
-        cont, linfs, dailyInfs = systemDay(layers, attrs, p, i, testRules)
+        cont, linfs, dailyInfs = systemDay(layers, attrs, p, i, curDay, testRules)
 
         stateLog.append(countState(attrs, stateList))
         infLog.append(dailyInfs)
@@ -688,7 +855,7 @@ def timedRunTesting(attrs, layers, strat, baseP, curDay, runDays, testPools, mod
         
         dailyInfs = 0
         
-        cont, linfs, dailyInfs = systemDay(layers, attrs, p, i )
+        cont, linfs, dailyInfs = systemDay(layers, attrs, p, i)
         
 
         stateLog.append(countState(attrs, stateList))
@@ -718,11 +885,44 @@ def initRun(attrs, layers, strat, baseP, threshold):
         
         dailyInfs = 0
     
-        cont, linfs, dailyInfs = systemDay(layers, attrs, p, i)
+        cont, linfs, dailyInfs = systemDay(layers, attrs, p, i, 0)
 
 
         stateLog.append(countState(attrs, stateList))
         if stateLog[-1]['Is'] > threshold:
+            cont = False
+            
+        infLog.append(dailyInfs)
+        infLogByLayer.append(linfs)
+        
+        
+    return stateLog, infLog, infLogByLayer, i
+
+def hospThresholdRun(attrs, layers, strat, baseP, threshold):
+
+    cont = 1
+    i = 0
+    #inVec = convertVector(strat)
+    p = setStrategy(strat, baseP, layers, attrs)
+
+
+
+    stateLog = []
+    infLog = []
+    infLogByLayer = []
+    
+    while cont:
+        i+=1
+        sys.stdout.flush()
+        sys.stdout.write(str(i)+'\r')
+        
+        dailyInfs = 0
+    
+        cont, linfs, dailyInfs = systemDay(layers, attrs, p, i)
+
+
+        stateLog.append(countState(attrs, stateList))
+        if stateLog[-1]['H'] > threshold:
             cont = False
             
         infLog.append(dailyInfs)
@@ -854,6 +1054,16 @@ def genBlankState(attrs):
 
 def seedState(attrs, n):
     for node in random.sample(attrs.keys(), n):
+        attrs[node]['state'] = 'E'
+        attrs[node]['sick'] = True
+
+def seedStateStudents(attrs, n):
+    pool = []
+    for node in attrs:
+        if node[0] == 's':
+            pool.append(node)
+        
+    for node in random.sample(pool, n):
         attrs[node]['state'] = 'E'
         attrs[node]['sick'] = True
 
