@@ -299,7 +299,7 @@ armyTemplate['ingeniørbataljon'] = { #260 ansatte og 400 vernepliktige
 armyTemplate['Ingeniørkomp'] = {
     'level' : 'komp',
     'units' : {
-        'Ingeniørtropp' : 6
+        'Ingeniørtropp' : 1
     }
 }
 armyTemplate['Ingeniørtropp'] = {
