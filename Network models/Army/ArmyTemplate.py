@@ -28,7 +28,7 @@ armyTemplate['telemarkbat'] = {
 }
 
 armyTemplate['kampstøtteEskadron'] = {
-    'level' : 'esk',
+    'level' : 'komp',
     'units' : {
         'eskadronstab' : 1,
         'sambandstropp' : 1,
@@ -78,7 +78,7 @@ armyTemplate['lag'] = {
 }
 
 armyTemplate['stridsvogneskadron'] = {
-    'level' : 'esk',
+    'level' : 'komp',
     'units' : {
         'stridsvognstropp' : 1
     }
@@ -92,7 +92,7 @@ armyTemplate['stridsvognstropp'] = {
 }
 
 armyTemplate['mekanisertinfant'] = {
-    'level' : 'esk',
+    'level' : 'komp',
     'units' : {
         'mekanisertinfantstropp' : 1
     }
@@ -171,7 +171,7 @@ armyTemplate['bataljonstabTropp'] = {
 }
 
 armyTemplate['kavalerieskadron'] = { #15 lag igjen med 8 per
-    'level' : 'esk',
+    'level' : 'komp',
     'units' : {
         'oppklaringstropp' : 1,
         'skarpskyttertropp' : 1,
@@ -211,7 +211,7 @@ armyTemplate['panserbat'] = { #ca 560
 }
 
 armyTemplate['kavalerieskadron']= {  #18
-    'level' : 'esk',
+    'level' : 'komp',
     'units' : {
         'oppklaringstropp' : 1,
         'patruljetropp' : 1,
@@ -241,7 +241,7 @@ armyTemplate['sensortropp'] = {
 
 
 armyTemplate['kampstøtteeskadron'] = { #18
-    'level' : 'esk',
+    'level' : 'komp',
     'units' : {
         'kommandoplasstropp' : 1,
         'sanitetstropp' : 1,
