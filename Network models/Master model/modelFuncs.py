@@ -266,6 +266,7 @@ def ICU(node, attrs, p, day):
         elif attrs[node]['nextState'] == 'R':
             recover(node, attrs, p, day)
 
+
             
 #State change functions
 def recover(node, attrs, p, day):
@@ -1086,7 +1087,29 @@ def dynRandomLayer(attrs, layer, p, day):
     return infs
 
 
+def genVaccPoolAllAboveAge(attrs, layers, age):
+    pool = []
+    for node in attrs:
+        if attrs[node]['age'] > age:
+            pool.append(node)
+    random.shuffle(pool)
+    return pool
+ 
+
+def vaccinateNode(attrs, node, p=1.0):
+    if random.random() < p:
+        attrs[node]['state'] = 'R'
+        attrs[node]['sick'] = False
+        for layer in attrs[node]['present']:
+            attrs[node]['present'][layer] = True
     
+
+def partialVaccination(attrs, vaccPool, n, p):
+    for node in vaccPool[0:n]:
+        vaccinateNode(attrs, node, p)
+    del vaccPool[:n]    
+    
+        
 
 
 def genBlankState(attrs):
