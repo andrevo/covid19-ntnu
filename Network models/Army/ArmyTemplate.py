@@ -8,12 +8,12 @@ armyTemplate['brigardenord'] = {
         'telemarkbat' : 1,
         'andrebat' : 1,
         'panserbat' : 1,
-        'artilleribat' : 1,
+        # 'artilleribat' : 1,
         'ingeniørbat' : 1,
         'sambandsbat' : 1,
         'sanitetsbat' : 1,
         'stridstrenbat' : 1,
-        'militærpolitikomp' : 1
+        # 'militærpolitikomp' : 1
         }
 }
 
@@ -21,13 +21,13 @@ armyTemplate['telemarkbat'] = {
     'level':'bat',
     'units' : {
         'stridsvogneskadron' : 1,  #Tar med i første omgang, selv om stridsvogner
-        'kavalerieskadron' : 1, 
+        'kavalerieskadrontelbat' : 1, 
         'mekanisertinfant' : 2,
-        'kampstøtteeskadron' : 1
+        'kampstøtteeskadrontelbat' : 1
         }
 }
 
-armyTemplate['kampstøtteEskadron'] = {
+armyTemplate['kampstøtteeskadrontelbat'] = {
     'level' : 'komp',
     'units' : {
         'eskadronstab' : 1,
@@ -112,7 +112,7 @@ armyTemplate['andrebat'] = {  #ca 600 menn på kompB, C, kavaleri, støttekomp, 
         #'kompA' : 1,  i reserve, ikke i daglig drift
         'kompB' : 1, 
         'kompC' : 1,
-        'kavalerieskadron' : 1,
+        'kavalerieskadrontelbat' : 1,
         'støttekomp' : 1,
         'bataljonstab' : 1
     }
@@ -170,7 +170,7 @@ armyTemplate['bataljonstabTropp'] = {
     }
 }
 
-armyTemplate['kavalerieskadron'] = { #15 lag igjen med 8 per
+armyTemplate['kavalerieskadrontelbat'] = { #15 lag igjen med 8 per
     'level' : 'komp',
     'units' : {
         'oppklaringstropp' : 1,
@@ -203,14 +203,14 @@ armyTemplate['MUAS'] = {
 armyTemplate['panserbat'] = { #ca 560
     'level' : 'bat',
     'units' : {
-        'kavalerieskadron' : 1, #18 lag
+        'kavalerieskadronpanserbat' : 1, #18 lag
         'stridsvogneskadron' : 1, #17 lag
         'stormeskadron' : 2, #35 lag
-        'kampstøtteeskadron' : 1 #18 lag
+        'kampstøtteeskadronpanserbat' : 1 #18 lag
     }
 }
 
-armyTemplate['kavalerieskadron']= {  #18
+armyTemplate['kavalerieskadronpanserbat']= {  #18
     'level' : 'komp',
     'units' : {
         'oppklaringstropp' : 1,
@@ -240,7 +240,7 @@ armyTemplate['sensortropp'] = {
 }
 
 
-armyTemplate['kampstøtteeskadron'] = { #18
+armyTemplate['kampstøtteeskadronpanserbat'] = { #18
     'level' : 'komp',
     'units' : {
         'kommandoplasstropp' : 1,
@@ -290,22 +290,36 @@ armyTemplate['bombekastertropp'] = {
 #     'kampluftvernbatteri' : 1
 # }
 
-armyTemplate['ingeniørbataljon'] = { #260 ansatte og 400 vernepliktige
+armyTemplate['ingeniørbat'] = { #260 ansatte og 400 vernepliktige
     'level' : 'bat',
     'units' : {
-        'Ingeniørkomp' : 1
+        'ingeniørkomp' : 1
     }
 }
-armyTemplate['Ingeniørkomp'] = {
+armyTemplate['ingeniørkomp'] = {
     'level' : 'komp',
     'units' : {
-        'Ingeniørtropp' : 1
+        'ingeniørtropp' : 1
     }
 }
-armyTemplate['Ingeniørtropp'] = {
-    'level' : 'komp',
+armyTemplate['ingeniørtropp'] = {
+    'level' : 'trp',
     'units' : {
         'lag' : 5
+    }
+}
+
+armyTemplate['stormeskadron'] = {
+    'level' : 'komp',
+    'units' : {
+        'stormtropp' : 1
+    }
+}
+
+armyTemplate['stormtropp'] = {
+    'level' : 'trp',
+    'units' : {
+        'lag' : 35
     }
 }
 
@@ -463,6 +477,20 @@ armyTemplate['komp2StridtrenTropp'] = {
     }
 }
 
+
+armyTemplate['komp3Stridtren'] = {
+    'level' : 'komp',
+    'units' : {
+        'komp3StridtrenTropp' : 1
+    }
+}
+
+armyTemplate['komp3StridtrenTropp'] = {
+    'level' : 'trp',
+    'units' : {
+        'lag' : 16
+    }
+}
 
 armyTemplate['komp4Stridtren'] = {
     'level' : 'komp',
