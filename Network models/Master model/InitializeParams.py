@@ -58,9 +58,9 @@ stateInf = {}
 
 
 dur = {}
-dur['I-E'] = 1
+dur['I-E'] = 5
 
-dur['PS-I'] = 5
+dur['PS-I'] = 2
 dur['I-R'] = 5
 dur['I-H'] = 6
 dur['AS-R'] = 8

@@ -1,1 +1,0 @@
-The MATLAB script for numerical optimization depends on the open-source toolbox CasADi, which can be interfaced through MATLAB, but also OCTAVE and Python. See https://web.casadi.org/get/ for install instructions.
