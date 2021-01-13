@@ -203,7 +203,7 @@ def cliqueDay(clique, attrs, layer, p, day):
             if attrs[node]['age'] > 10:
                 susClique.append(node)
             else:
-                if random.random() < 0.3:
+                if random.random() < childSusceptibility:
                     susClique.append(node)
         if attrs[node]['present'][layer] & attrs[node]['sick']:
             infClique.append(node)
@@ -285,7 +285,10 @@ def turnAsymp(node, attrs, p, day):
     attrs[node]['nextState'] = 'R'
     attrs[node]['nextDay'] = day+1+np.random.poisson(dur['AS-R'])
     attrs[node]['sick'] = True
-    attrs[node]['relInfectivity'] = 0.3
+    attrs[node]['relInfectivity'] = 0.5
+    if attrs[node]['age'] < 13:
+        attrs[node]['relInfectivity'] = childInfectivity
+
     
 def turnPresymp(node, attrs, p, day):
     attrs[node]['state'] = 'Ip'
@@ -294,7 +297,7 @@ def turnPresymp(node, attrs, p, day):
     attrs[node]['sick'] = True
     attrs[node]['relInfectivity'] = 3.0
     if attrs[node]['age'] < 13:
-        attrs[node]['relInfectivity'] = 0.3
+        attrs[node]['relInfectivity'] = 3.0*childInfectivity
 
 
     
@@ -321,7 +324,7 @@ def activateSymptoms(node, attrs, p, day):
         attrs[node]['nextDay'] = day+1+np.random.poisson(dur['I-R'])
     attrs[node]['relInfectivity'] = 1
     if attrs[node]['age'] < 13:
-        attrs[node]['relInfectivity'] = 0.3
+        attrs[node]['relInfectivity'] = childInfectivity
 
         
 def hospitalize(node, attrs, p, day):
@@ -1056,7 +1059,7 @@ def dynRandomLayer(attrs, layer, p, day):
                             infectNode(attrs, nNode, node, 'R', day)
                             infs += 1
                     else:
-                        if random.random() < 0.3*p*attrs[node]['relInfectivity']:
+                        if random.random() < childSusceptibility*p*attrs[node]['relInfectivity']:
                             infectNode(attrs, nNode, node, 'R', day)
                             infs += 1
                             
@@ -1074,11 +1077,12 @@ def dynRandomLayer(attrs, layer, p, day):
 
 
             if random.random() < nbP:
+                
                 if attrs[node]['age'] > 10:
                     infectNode(attrs, node, nNode, 'R', day)
                     infs += 1
                 else:
-                    if random.random() < 0.3:
+                    if random.random() < childSusceptibility:
                         infectNode(attrs, node, nNode, 'R', day)
                         infs += 1
                     
@@ -1094,7 +1098,51 @@ def genVaccPoolAllAboveAge(attrs, layers, age):
             pool.append(node)
     random.shuffle(pool)
     return pool
- 
+
+def genVaccPoolByHouseholdsDecreasing(attrs, layers):
+    pool = []
+    sortedHHs = sorted(layers['HH']['cliques'], key = getHHsize, reverse = True)
+    for hh in layers['HH']['cliques']:
+        for node in hh:
+            pool.append(node)
+    return pool
+
+def genVaccPoolHouseholdsRolling(attrs, layers):
+    pool = []
+    hhBySize = {}
+    for hh in layers['HH']['cliques']:
+        sz = len(hh['nodes'])
+        if sz in hhBySize:
+            hhBySize[sz].append(list(hh['nodes']))
+        else:
+            hhBySize[sz] = [list(hh['nodes'])]
+
+
+    for sz in range(1, max(hhBySize.keys())):
+        if sz not in hhBySize:
+            hhBySize[sz] = []
+
+        
+    for sz in reversed(range(1, max(hhBySize.keys()))):
+        random.shuffle(hhBySize[sz])
+        for hh in hhBySize[sz]:
+            pool.append(hh[0]) #Add first individual to pool
+            del hh[0] #Remove said individual from household
+            if sz > 1:
+                hhBySize[sz-1].append(hh) #Bump household down to slice below
+        del hhBySize[sz] #Clean-up, has to be done outside loop to prevent returning error
+        
+    return pool
+
+def genVaccPoolRandom(attrs, layers):
+    pool = list(attrs.keys())
+    random.shuffle(pool)
+    return pool
+        
+
+def vaccinatePool(attrs, node, pool, p=1.0):
+    for node in pool:
+        vaccinateNode(attrs, node, p)
 
 def vaccinateNode(attrs, node, p=1.0):
     if random.random() < p:

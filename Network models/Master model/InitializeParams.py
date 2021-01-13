@@ -58,15 +58,18 @@ stateInf = {}
 
 
 dur = {}
-dur['I-E'] = 5
+dur['I-E'] = 4
 
 dur['PS-I'] = 2
 dur['I-R'] = 5
 dur['I-H'] = 6
 dur['AS-R'] = 8
-dur['H-R'] = 8
+dur['H-R'] = 5
 dur['H-ICU'] = 4
 dur['ICU-R'] = 12
-dur['ICU-D'] = dur['ICU-R']
+dur['ICU-D'] = 8
 dur['H-D'] = dur['H-ICU']+.5*dur['ICU-D']
 dur['I-D'] = dur['I-H']+dur['H-D']
+
+childSusceptibility = 0.5
+childInfectivity = 0.5
