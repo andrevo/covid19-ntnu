@@ -1,0 +1,10 @@
+mathtext.rm : Bitstream Vera Sans
+mathtext.it : Bitstream Vera Sans:italic
+mathtext.bf : Bitstream Vera Sans:bold
+mathtext.fontset : stix
+font.family : STIXGeneral
+axes.titlesize : 18
+axes.labelsize : 14
+legend.fontsize : 12
+xtick.labelsize : 10
+ytick.labelsize : 10
