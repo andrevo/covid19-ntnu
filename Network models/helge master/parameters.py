@@ -1,3 +1,12 @@
+'''
+Author: Helge Bergo
+Date: January 2021
+File: parameters.py
+
+This file contains the global parameters used in the main simulation model. 
+'''
+import networkx as nx
+
 layers = {'BH': {}, 'BS': {}, 'US': {},
           'VS': {}, 'W': {}, 'HH': {}, 'NH': {}, 'R': {}}
 
@@ -25,10 +34,8 @@ states = ['Susceptible', 'Exposed', 'Asymptomatic ', 'Presymptomatic', 'Symptoma
 
 strat = {'S': 10, 'W': 1, 'R': 1}
 
-import random
 
 #Set base probabilities
-
 
 baseP = {}
 baseP['inf'] = {'BH': 0.00015, 'BS': 0.000015, 'US': 0.00015, 'VS': 0.00015, 'W': 0.00015, 'R': 0.5*pow(10, -6), 'HH': 0.15, 'NH':0.2, 'dynR': 0.0150}
@@ -92,3 +99,36 @@ dur['ICU-R'] = 12
 dur['ICU-D'] = dur['ICU-R']
 dur['H-D'] = dur['H-ICU']+.5*dur['ICU-D']
 dur['I-D'] = dur['I-H']+dur['H-D']
+
+
+
+
+class Parameters:
+
+    def __init__(self, infected=100, cityName='Trondheim', runDays=50, **kwargs):
+        self.n = infected
+        self.cityName = cityName
+        self.startDay = 0
+        self.runDays = runDays
+
+        self.activity = kwargs.get('activity', {'mode':10, 'var':3, 'exp':-0.75})
+        self.strategy = kwargs.get('strategy', {'S': 12, 'W': 1, 'R': 1})
+        self.testing = kwargs.get('testing', {})
+        # self.fpr = kwargs.get('fpr', 0)
+        # self.fnr = kwargs.get('fnr', 0)
+
+        self.saveResults = kwargs.get('saveResults', True)
+        self.printResults = kwargs.get('printResults', True)
+        self.createNetwork = kwargs.get('createNetwork', True)
+        
+        self.inVec = kwargs.get('inVec',{})
+
+        self.kwargs = kwargs
+        
+        if self.createNetwork:
+            self.tree = nx.DiGraph()
+
+
+    def __repr__(self):
+        return '{}: {} days, {} infected.'.format(self.cityName, self.days[1], self.n)
+

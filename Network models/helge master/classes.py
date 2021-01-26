@@ -1,6 +1,17 @@
+'''
+Author: Helge Bergo
+Date: January 2021
+File: classes.py
+
+This module contains defines the Person, Clique and Layer classes, used in model.py 
+'''
+
 import numpy as np
 import random
 from parameters import *
+import networkx as nx
+
+
 
 class Person:
 
@@ -40,24 +51,28 @@ class Person:
         return 'ID:{:2}, state: {}, age: {:2}, cliques: {}'.format(self.id_number, self.state, self.age, self.cliques)
 
 
-    def infectNode(self, anc, layer, day):
+    def infectNode(self, anc, layer, day, parameters):
         self.state = 'E'
         self.lastDay = day
         self.nextDay = day+1+np.random.poisson(dur['I-E'])
-        self.infAnc = [anc, layer]
-        anc.infDesc.append([self, layer])
+        self.infAnc = [anc, layer, day]
+        anc.infDesc.append([self, layer, day])
+        
+        if parameters.createNetwork:
+            parameters.tree.add_node(self.id_number, decade=self.decade, layer=layer, day=day)
+            parameters.tree.add_edge(anc.id_number, self.id_number)
 
 
-    def generateActivity(self, params):
+    def generateActivity(self, parameters):
+        mode, var, exp = parameters.activity.values()
         if self.age in ['A1, A2', 'E1']:
-            self.activity = int(max(np.random.normal(params['mode'], params['var']), 1) + pow(random.random(), params['exp']))
+            self.activity = int(max(np.random.normal(mode, var), 1) + pow(random.random(), exp))
         else:
-            self.activity = int(max(np.random.normal(params['mode'], params['var']), 1))
+            self.activity = int(max(np.random.normal(mode, var), 1))
             
-
-    # Testing and quarantine functions
-
-    def test(self, fpr=0, fnr=0):
+    
+    '''Testing and quarantine functions'''
+    def test(self):
         return self.state in {'Ip', 'Ia','Is'}
 
 
@@ -85,16 +100,17 @@ class Person:
         self.quarantine = False
 
 
-    def individualTestAndQuarantine(self, layers, day):
+    def individualTestAndQuarantine(self, layers, day, parameters):
         if self.test():
             if self.inNursing == False:
                 for clique in self.cliques:
                     if clique.name == 'HH':
-                        # hhID = clique[1]
                         clique.quarantineClique()
+            if parameters.createNetwork:
+                parameters.tree.add_node(self.id_number, test=1, testDay=day)
 
 
-    # State change functions
+    '''State change functions'''
     def recover(self, params, day):
         self.state = 'R'
         self.lastDay = day
@@ -120,7 +136,7 @@ class Person:
         }
         return funcs[self.state]
     
-    #Daily state progress check and branching functions
+    '''Daily state progress check and branching functions'''
     def incubate(self, p, day):
         if day == self.nextDay:
             if random.random() < p['S'][self.decade]:
@@ -166,7 +182,7 @@ class Person:
                 self.recover(p, day)
 
                 
-    #State change functions
+    '''State change functions'''
     def recover(self, p, day):
         self.state = 'R'
         self.lastDay = day
@@ -274,10 +290,17 @@ class Person:
             self.present[layer] = False
 
 
-    def ifSwitch(self, p, day):
-        if self.state == 'E':
-            self.incubate(p, day)
+    # def ifSwitch(self, p, day):
+    #     if self.state == 'E':
+    #         self.incubate(p, day)
 
+
+
+class Infected(Person):
+
+    def __init__(self):
+        Person.__init__(self)
+        pass
 
 # ============================================================
 # CLIQUE CLASS 
@@ -313,7 +336,7 @@ class Clique:
 
 
     def hasCases(self):
-        '''Check to see whether cliqueday needs to be run or not'''
+        '''Check to see whether cliqueDay() needs to be run or not'''
         for node in self.nodes:
             # if node.state in {'Ip','Is','Ia'}:
             if node.sick:
@@ -321,7 +344,7 @@ class Clique:
         return False
 
 
-    def pooledTest(self, fpr=0, fnr=0):
+    def pooledTest(self, parameters, fnr):
         for node in self.nodes:
             if node.test():
                 if random.random() < fnr:
@@ -331,7 +354,7 @@ class Clique:
         return False
 
 
-    def pooledTestAdultOnly(self, age=18, fpr=0, fnr=0):
+    def pooledTestAdultOnly(self, parameters, age=18):
         for node in self.nodes:
             if node.age > age and node.test():
                 return True
@@ -348,15 +371,15 @@ class Clique:
             node.dequarantineNode()
 
 
-    def testAndQuarantine(self, fpr=0, fnr=0):
-        if self.pooledTest():
+    def testAndQuarantine(self, parameters, fnr, fpr):
+        if self.pooledTest(parameters, fnr):
             self.quarantineClique()
         else:
             self.dequarantineClique()
 
 
-    def testAndQuarantineAdults(self, age,fpr=0, fnr=0):
-        if self.pooledTestAdultOnly(age):
+    def testAndQuarantineAdults(self, parameters, fnr, fpr, age=18):
+        if self.pooledTestAdultOnly(parameters, age):
             self.quarantineClique()
         else:
             self.dequarantineClique()
@@ -391,17 +414,23 @@ class Layer:
         self.cliques.append(Clique)
 
 
-
-
 # ============================================================
-# PARAMETER CLASS 
+# TREE CLASS 
 # ============================================================
 
-# class Parameters:
+class Tree:
 
-#     def __init__(self):
-#         self.p = 0
+    def __init__(self):
+        self = nx.DiGraph()
 
+    def add_node(self, node):
+        self.add_node(node)
+
+    def add_edge(self, ancestor, node):
+        self.add_edge(ancestor, node)
+
+    def __repr__(self):
+        return f'Tree: {self.number_of_nodes()} nodes, {self.number_of_edges()} edges'
 
 
 def main():
