@@ -1,6 +1,7 @@
 import sys
 import random
 import numpy as np
+import scipy.stats as stats
 import copy
 import time
 #import networkx as nx
@@ -398,12 +399,13 @@ def systemDay(layers, attrs, p, day, startDay, testRules = {}):
 
         if (layers[layer]['open']) & (layer != 'R') & (layer != 'NTNUSocial'): #i > rel[layer]:
             for clique in layers[layer]['cliques']:
-                if clique['open']:
+                if clique['open'] & hasCases(clique, attrs):
                     infs = cliqueDay(clique['nodes'], attrs, layer, p['inf'][layer], day)
                     lInfs[layer] += len(infs)
                     dailyInfs += len(infs)
-        
-    lInfs['Rp'] = dynRandomLayer(attrs, layers['R']['cliques'][0], p['inf']['dynR'], day)
+    
+    #lInfs['Rp'] = dynRandomLayer(attrs, layers['R']['cliques'][0], p['inf']['dynR'], day)
+    lInfs['Rp'] = simpleDynRandomLayer(attrs, layers['R']['cliques'][0], p['inf']['dynR'], day)
     if ('NTNUSocial' in layers):
         lInfs['NTNUSocial'] = dynRandomLayer(attrs, layers['NTNUSocial']['cliques'][0], p['inf']['dynR'], day)
     
@@ -444,6 +446,12 @@ def systemDay(layers, attrs, p, day, startDay, testRules = {}):
     return cont, lInfs, dailyInfs, ageCount
 
 
+def hasCases(clique, attrs):
+    for node in clique['nodes']:
+        if attrs[node]['sick']:
+            return True
+    return False
+
 def test(node, attrs, day, fpr=0, fnr=0):
     
     if attrs[node]['state'] in {'Ip', 'Ia'}:
@@ -455,6 +463,7 @@ def test(node, attrs, day, fpr=0, fnr=0):
         return random.random() > fnr        
     else:
         return random.random() < fpr
+
 
 
 def pooledTest(clique, attrs, day, fpr=0, fnr=0):    
@@ -858,7 +867,7 @@ def timedRun(attrs, layers, strat, baseP, curDay, runDays, testing={}):
         infLogByLayer.append(linfs)
         ageLog.append(ageCount)
     
-    return stateLog, infLog, infLogByLayer, ageLog, i
+    return stateLog, infLog, infLogByLayer, i
 
 
 
@@ -1046,6 +1055,20 @@ def genActivity(attrs, dynParams):
             attrs[node]['act'] = int(max(np.random.normal(mode, var), 1))
 
 
+#Returns fraction of active susceptible nodes in layer
+def getSusFrac(attrs, layer):
+    sus = 1
+    for node in layer:
+        sus += (attrs[node]['present']['R'] & (attrs[node]['state'] == 'S'))
+        
+    susFrac = float(sus)/float(len(layer))
+    return susFrac
+
+#Creates infections in dynamic random layer from outgoing connections of infected nodes
+def dynRandomOutInfs(attrs, layer):
+    susFrac = getSusFrac(attrs, layer)
+    
+            
 #Node-based power law spread on a random layer
 def dynRandomLayer(attrs, layer, p, day):
     infs = 0
@@ -1076,38 +1099,72 @@ def dynRandomLayer(attrs, layer, p, day):
             nbP = 1-nbP
 
 
-            if random.random() < nbP:
-                
-                if attrs[node]['age'] > 10:
-                    infectNode(attrs, node, nNode, 'R', day)
-                    infs += 1
-                else:
-                    if random.random() < childSusceptibility:
+            if nbP > 0:
+                if random.random() < nbP:
+                    
+                    if attrs[node]['age'] > 10:
                         infectNode(attrs, node, nNode, 'R', day)
                         infs += 1
+                    else:
+                        if random.random() < childSusceptibility:
+                            infectNode(attrs, node, nNode, 'R', day)
+                            infs += 1
                     
 
 
     return infs
 
 
-def genVaccPoolAllAboveAge(attrs, layers, age):
-    pool = []
+def simpleDynRandomLayer(attrs, layer, p, day):
+    prevalence = 0
+    sickNodes = []
     for node in attrs:
-        if attrs[node]['age'] > age:
-            pool.append(node)
-    random.shuffle(pool)
-    return pool
+        if attrs[node]['sick'] & attrs[node]['present']['R']:
+            act = min(random.randint(0, attrs[node]['act']), len(layer))
+            prevalence += act*attrs[node]['relInfectivity']
+            sickNodes.append(node)
 
-def genVaccPoolByHouseholdsDecreasing(attrs, layers):
+            
+    prevalence = float(prevalence)/len(attrs)
+    infs = 0
+    for node in attrs:
+        if (attrs[node]['state'] == 'S') & attrs[node]['present']['R']:
+            act = min(random.randint(0, attrs[node]['act']), len(layer))
+            #act = 0.5*attrs[node]['act']
+            if random.random() < (1-pow(1-p*prevalence, act)):
+                
+                infectNode(attrs, node, random.choice(sickNodes), layer, day)
+                infs += 1
+    return infs
+
+
+def genVaccPoolByAge(attrs, layers, capacity):
+    pool = list(attrs.keys())
+    pool.sort(key= lambda node: attrs[node]['decade'], reverse=True)
+    return pool[:capacity]
+
+def genVaccPoolByAgeWithHH(attrs, layers, capacity):
+    
+    pool = []
+    hhSize = {}
+    for hh in layers['HH']['cliques']:
+        for node in hh['nodes']:
+            pool.append(node)
+            hhSize[node] = len(hh['nodes'])
+            
+    pool.sort(key = lambda node: (attrs[node]['decade'], hhSize[node]), reverse=True)
+    return pool[:capacity]
+
+
+def genVaccPoolByHouseholdsDecreasing(attrs, layers, capacity):
     pool = []
     sortedHHs = sorted(layers['HH']['cliques'], key = getHHsize, reverse = True)
-    for hh in layers['HH']['cliques']:
-        for node in hh:
+    for hh in sortedHHs:
+        for node in hh['nodes']:
             pool.append(node)
-    return pool
+    return pool[:capacity]
 
-def genVaccPoolHouseholdsRolling(attrs, layers):
+def genVaccPoolHouseholdsRolling(attrs, layers, capacity):
     pool = []
     hhBySize = {}
     for hh in layers['HH']['cliques']:
@@ -1132,15 +1189,15 @@ def genVaccPoolHouseholdsRolling(attrs, layers):
                 hhBySize[sz-1].append(hh) #Bump household down to slice below
         del hhBySize[sz] #Clean-up, has to be done outside loop to prevent returning error
         
-    return pool
+    return pool[:capacity]
 
-def genVaccPoolRandom(attrs, layers):
+def genVaccPoolRandom(attrs, layers, capacity):
     pool = list(attrs.keys())
     random.shuffle(pool)
-    return pool
-        
+    return pool[:capacity]
 
-def vaccinatePool(attrs, node, pool, p=1.0):
+
+def vaccinatePool(attrs, pool, p=1.0):
     for node in pool:
         vaccinateNode(attrs, node, p)
 
