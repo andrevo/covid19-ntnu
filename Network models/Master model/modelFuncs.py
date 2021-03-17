@@ -438,7 +438,7 @@ def systemDay(layers, attrs, p, day, startDay, testRules = {}):
             for node in attrs:
                 if attrs[node]['state'] == 'Is':
                     
-                    if attrs[node]['lastDay'] == (day-2):
+                    if attrs[node]['lastDay'] == (day-testRules['delay']):
                     
                         indTestAndQuar(node, attrs, layers, day)
             
@@ -555,7 +555,19 @@ def genTestPoolsTopFraction(layers, attrs, capacity, compliance=1.0):
                 i += 1
             j += 1
         return pools
-    
+
+def genTestPoolsTSHT(layers, attrs, capacity, compliance=1.0):
+    sortedHHs = sorted(layers['HH']['cliques'], key = getHHsize, reverse = True)
+    i = 0
+    j = 0
+    pools = []
+    while ((i < capacity) & (j < len(sortedHHs))):
+        if random.random() < compliance:
+            pools.append(sortedHHs[j])
+            i += 1
+        j += 1
+        return pools
+
 
 def genTestPoolsStudents(layers, attrs, capacity, size):
     i = 0
@@ -712,7 +724,7 @@ def setTestRules(testing, layers, attrs):
     testRules = {}
     
     if testing:
-
+        
         testRules['strat'] = testing['testStrat']
         if testing['testStrat'] in ['TPHT', 'TPHTA']:
             if 'Stud' not in testing:
@@ -766,6 +778,10 @@ def setTestRules(testing, layers, attrs):
             testRules['fpr'] = testing['fpr']
         else:
             testRules['fpr'] = 0
+        if 'delay' in testing:
+            testRules['delay'] = testing['delay']
+        else:
+            testRules['delay'] = 2
             
     return testRules
 
