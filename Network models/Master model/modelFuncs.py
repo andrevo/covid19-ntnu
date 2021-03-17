@@ -166,7 +166,7 @@ def splitHHs(layers, attrs, p):
 
 def mergeHHs(layers, attrs, p):
     newHHLayer = {'cliques': [], 'open': True}
-    seq = range(len(layers['HH']['cliques']))
+    seq = list(range(len(layers['HH']['cliques'])))
     random.shuffle(seq)
     for i in range(0, len(layers['HH']['cliques'])-1, 2):
         if random.random() < p:
@@ -549,7 +549,7 @@ def genTestPoolsTopFraction(layers, attrs, capacity, compliance=1.0):
         i = 0
         j = 0
         pools = []
-        while i < capacity:
+        while ((i < capacity) & (j < len(sortedHHs))):
             if random.random() < compliance:
                 pools.append(sortedHHs[j])
                 i += 1
@@ -1142,6 +1142,19 @@ def genVaccPoolByAge(attrs, layers, capacity):
     pool = list(attrs.keys())
     pool.sort(key= lambda node: attrs[node]['decade'], reverse=True)
     return pool[:capacity]
+
+
+def genVaccPoolByAgeReverse(attrs, layers, capacity, cutoff=0):
+    pool = list(attrs.keys())
+    pool.sort(key= lambda node: attrs[node]['decade'])
+    if cutoff > 0:
+        newPool = []
+        for node in pool:
+            if attrs[node]['age'] > cutoff:
+                newPool.append(node)
+        pool = newPool
+    return pool[:capacity]
+
 
 def genVaccPoolByAgeWithHH(attrs, layers, capacity):
     
