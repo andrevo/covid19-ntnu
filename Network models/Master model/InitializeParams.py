@@ -73,3 +73,5 @@ dur['I-D'] = dur['I-H']+dur['H-D']
 
 childSusceptibility = 0.5
 childInfectivity = 0.5
+childSusceptibility = 1
+childInfectivity = 1

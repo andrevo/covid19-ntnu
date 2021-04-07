@@ -92,6 +92,7 @@ def readModel(ageFile, cliqueFile):
         attrs[node]['sick'] = False
         attrs[node]['inNursing'] = False
         attrs[node]['present'] = {}
+        attrs[node]['inSchool'] = False
         for layer in layers:
             attrs[node]['present'][layer] = True
     
@@ -124,7 +125,12 @@ def readModel(ageFile, cliqueFile):
                 for node in clique['nodes']:
                     if attrs[node]['age'] > 70:
                         attrs[node]['inNursing'] = True
-                
+
+            if cName in {'BH', 'BS', 'US', 'VS'}:
+                for node in clique['nodes']:
+                    if attrs[node]['age'] < 19:
+                        attrs[node]['inSchool'] = True
+                    
             layers[cName]['cliques'].append(clique)
             for node in clique['nodes']:
                 attrs[node]['cliques'].append([cName, len(layers[cName]['cliques'])-1])
@@ -188,8 +194,8 @@ def infectNode(attrs, node, anc, layer, day):
     attrs[node]['state'] = 'E'
     attrs[node]['lastDay'] = day
     attrs[node]['nextDay'] = day+1+np.random.poisson(dur['I-E'])          
-    attrs[node]['infAnc'] = [anc, layer]
-    attrs[anc]['infDesc'].append([node, layer])
+    attrs[node]['infAnc'] = [anc, layer, day]
+    attrs[anc]['infDesc'].append([node, layer, day])
 
 #Runs infections over a day
 def cliqueDay(clique, attrs, layer, p, day):
@@ -433,6 +439,11 @@ def systemDay(layers, attrs, p, day, startDay, testRules = {}):
                     if (day % testRules['freq']) == pool['testDay']:
                         testAndQuarAdults(pool, attrs, day, testRules['age'], testRules['fpr'], testRules['fnr'])
                     
+            if testRules['mode'] == 'Children':
+                for pool in testRules['pools']:
+                    if (day % testRules['freq']) == pool['testDay']:
+                        testAndQuarChildren(pool, attrs, day, testRules['age'], testRules['fpr'], testRules['fnr'])
+                    
  #                
         else:
             for node in attrs:
@@ -482,6 +493,22 @@ def pooledTestAdultOnly(clique, attrs, day, fpr=0, fnr=0, age=18):
                 return True
     return False
 
+#TEMPORARY COMMENT
+def pooledTestChildOnly(clique, attrs, day, fpr=0, fnr=0, age=18):
+    for node in clique['nodes']:
+        if attrs[node]['age'] < age:
+            if test(node, attrs, day, fpr, fnr):
+                return True
+    return False
+
+
+# def pooledTestChildOnly(clique, attrs, day, fpr=0, fnr=0, age=18):
+#     for node in clique['nodes']:
+#         if attrs[node]['inSchool']:
+#             if test(node, attrs, day, fpr, fnr):
+#                 return True
+#     return False
+
 
 def quarNode(node, attrs):
     for layer in {'W', 'US', 'VS', 'BS', 'BH', 'R', 'NH'}:
@@ -497,8 +524,13 @@ def quarClique(clique, attrs):
         quarNode(node, attrs)
 
 def dequarClique(clique, attrs):
+    clearClique = True
     for node in clique['nodes']:
-        dequarNode(node, attrs)
+        if attrs[node]['state'] in ['Ip', 'Ia', 'Is']:
+            clearClique = False
+    if clearClique:
+        for node in clique['nodes']:
+            dequarNode(node, attrs)
 
         
 def testAndQuar(clique, attrs, day, fpr=0, fnr=0):
@@ -513,6 +545,13 @@ def testAndQuarAdults(clique, attrs, day, age, fpr=0, fnr=0):
     else:
         dequarClique(clique, attrs)
 
+def testAndQuarChildren(clique, attrs, day, age, fpr=0, fnr=0):
+    if pooledTestChildOnly(clique, attrs, day, fpr, fnr, age):
+        quarClique(clique, attrs)
+    else:
+        dequarClique(clique, attrs)
+
+        
 def indTestAndQuar(node, attrs, layers, day):
     if test(node, attrs, day):
 
@@ -556,14 +595,14 @@ def genTestPoolsTopFraction(layers, attrs, capacity, compliance=1.0):
             j += 1
         return pools
 
-def genTestPoolsTSHT(layers, attrs, capacity, compliance=1.0):
+def genTestPoolsTSHT(layers, attrs, capacity, sSize = 1, compliance=1.0):
     sortedHHs = sorted(layers['HH']['cliques'], key = getHHsize, reverse = True)
     i = 0
     j = 0
     pools = []
     while ((i < capacity) & (j < len(sortedHHs))):
         if random.random() < compliance:
-            pools.append(sortedHHs[j])
+            pools.append(sortedHHs[j][:sSize])
             i += 1
         j += 1
         return pools
@@ -738,10 +777,22 @@ def setTestRules(testing, layers, attrs):
             else:
                 testRules['pools'] = genTestPoolsTopFraction(layers, attrs, testing['capacity'])
             testRules['mode'] = 'FullHH'
+
+        if testing['testStrat'] in ['TSHT']:
+            if 'compliance' in testing:
+                testRules['pools'] = genTestPoolsTSHT(layers, attrs, testing['capacity'], testing['compliance'])
+            else:
+                testRules['pools'] = genTestPoolsTSHT(layers, attrs, testing['capacity'])
+
         if testing['testStrat'] in ['TPHTA2']:
             testRules['pools'] = genTestPoolsTopFraction(layers, attrs, testing['capacity'])
             testRules['mode'] = 'Adults'
             testRules['age'] = testing['age']
+        if testing['testStrat'] in ['TPHTC2']:
+            testRules['pools'] = genTestPoolsTopFraction(layers, attrs, testing['capacity'])
+            testRules['mode'] = 'Children'
+            testRules['age'] = testing['age']
+
         if testing['testStrat'] in ['RPHT']:
             testRules['pools'] = genTestPoolsRandomHH(layers, attrs, testing['capacity'])
             testRules['mode'] = 'FullHH'
@@ -1149,7 +1200,7 @@ def simpleDynRandomLayer(attrs, layer, p, day):
             #act = 0.5*attrs[node]['act']
             if random.random() < (1-pow(1-p*prevalence, act)):
                 
-                infectNode(attrs, node, random.choice(sickNodes), layer, day)
+                infectNode(attrs, node, random.choice(sickNodes), 'R', day)
                 infs += 1
     return infs
 
